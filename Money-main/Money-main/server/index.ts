@@ -149,6 +149,36 @@ async function main() {
     res.json({ ok: true });
   });
 
+  // === Actualizar precios globales y configuración (rutas específicas antes de paramétricas) ===
+  app.post('/api/prices/update-all', async (_req, res) => {
+    const result = await updateAllPrices();
+    res.json(result);
+  });
+
+  app.post('/api/prices/test-sources', async (req, res) => {
+    const symbol = (req.body?.symbol as string) || 'AAPL';
+    const results = await testAllSources(symbol);
+    res.json(results);
+  });
+
+  app.post('/api/prices/save-api-key', async (req, res) => {
+    const schema = z.object({ provider: z.string(), key: z.string() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos' });
+    await saveApiKey(parsed.data.provider, parsed.data.key);
+    res.json({ ok: true });
+  });
+
+  app.get('/api/prices/api-keys', async (_req, res) => {
+    const providers = ['yahoo', 'stooq', 'coingecko', 'twelve-data', 'alpha-vantage'];
+    const result: Record<string, boolean> = {};
+    for (const p of providers) {
+      const key = await getApiKeyForProvider(p);
+      result[p] = !!key;
+    }
+    res.json(result);
+  });
+
   // === Precios ===
   app.get('/api/prices/:productId', async (req, res) => {
     const limit = parseInt(req.query.limit as string) || 365;
@@ -196,36 +226,6 @@ async function main() {
     const query = (req.query.q as string) || '';
     const results = await searchInstruments(query);
     res.json(results);
-  });
-
-  // === Actualizar precios ===
-  app.post('/api/prices/update-all', async (_req, res) => {
-    const result = await updateAllPrices();
-    res.json(result);
-  });
-
-  app.post('/api/prices/test-sources', async (req, res) => {
-    const symbol = (req.body?.symbol as string) || 'AAPL';
-    const results = await testAllSources(symbol);
-    res.json(results);
-  });
-
-  app.post('/api/prices/save-api-key', async (req, res) => {
-    const schema = z.object({ provider: z.string(), key: z.string() });
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos' });
-    await saveApiKey(parsed.data.provider, parsed.data.key);
-    res.json({ ok: true });
-  });
-
-  app.get('/api/prices/api-keys', async (_req, res) => {
-    const providers = ['yahoo', 'stooq', 'coingecko', 'twelve-data', 'alpha-vantage'];
-    const result: Record<string, boolean> = {};
-    for (const p of providers) {
-      const key = await getApiKeyForProvider(p);
-      result[p] = !!key;
-    }
-    res.json(result);
   });
 
   // === Tipos de cambio ===
@@ -1580,7 +1580,7 @@ async function main() {
 
   setInterval(() => {
     updateAllPrices().catch(err => console.error('Error en actualización programada de precios:', err.message));
-  }, 6 * 60 * 60 * 1000);
+  }, 4 * 60 * 60 * 1000);
 }
 
 main().catch(err => {

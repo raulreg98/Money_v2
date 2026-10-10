@@ -101,8 +101,10 @@ export function DashboardPage() {
                     const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
                     const fromName = accName(fromId);
                     const toName = accName(toId);
-                    const outgoingAmt = Math.abs(t.amount);
-                    const incomingAmt = Math.abs(t.to_amount || t.amount);
+                    const displayAmount = isOutgoing
+                      ? `-${formatEUR(Math.abs(t.amount))}`
+                      : formatEUR(Math.abs(t.amount), { sign: true });
+                    const color = isOutgoing ? 'text-red-400' : 'text-emerald-400';
 
                     return (
                       <tr key={t.id} className="border-b border-slate-800/50">
@@ -118,12 +120,7 @@ export function DashboardPage() {
                           </div>
                         </td>
                         <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
-                        <td className="px-5 py-2.5 text-right font-medium">
-                          <div className="flex items-center gap-2 justify-end text-xs sm:text-sm">
-                            <span className="text-red-400">-{formatEUR(outgoingAmt)}</span>
-                            <span className="text-emerald-400">+{formatEUR(incomingAmt)}</span>
-                          </div>
-                        </td>
+                        <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                       </tr>
                     );
                   }
