@@ -1,7 +1,8 @@
 import { type ReactNode, useState, useEffect } from 'react';
-import { LayoutDashboard, Briefcase, Wallet, BarChart3, Settings, Menu, X, TrendingUp, FolderTree, ChevronDown, ChevronRight, Landmark, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Wallet, BarChart3, Settings, Menu, X, TrendingUp, FolderTree, ChevronDown, ChevronRight, Landmark, PiggyBank, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatEUR } from '@/lib/format';
+import { AddTransactionModal } from '@/pages/AccountsPage';
 
 export type PageId = 'dashboard' | 'portfolio' | 'accounts' | 'categories' | 'charts' | 'settings';
 
@@ -70,6 +71,8 @@ function SidebarContent({
   const [accountsOpen, setAccountsOpen] = useState(true);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [showNewTxModal, setShowNewTxModal] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -102,6 +105,16 @@ function SidebarContent({
     return acc.initial_balance + txs.reduce((s: number, t: any) => s + t.amount, 0);
   };
 
+  const handleOpenNewTx = () => {
+    Promise.all([api.getAccounts(), api.getCategories()])
+      .then(([accs, cats]) => {
+        setAccounts(accs.filter((a: any) => !a.archived));
+        setCategories(cats);
+        setShowNewTxModal(true);
+      })
+      .catch(() => {});
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-800">
@@ -111,7 +124,17 @@ function SidebarContent({
         <span className="text-white font-bold text-lg tracking-tight">Mi Patrimonio</span>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <div className="px-3 pt-3 pb-1">
+        <button
+          onClick={handleOpenNewTx}
+          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Nueva Transacción</span>
+        </button>
+      </div>
+
+      <nav className="flex-1 px-3 py-3 space-y-1">
         <button
           onClick={() => onNavigate('dashboard')}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -204,6 +227,17 @@ function SidebarContent({
       <div className="px-3 py-4 border-t border-slate-800">
         <span className="text-slate-500 text-xs px-3">Uso local</span>
       </div>
+
+      {showNewTxModal && (
+        <AddTransactionModal
+          accounts={accounts}
+          categories={categories}
+          onClose={() => {
+            setShowNewTxModal(false);
+            onNavigate(current);
+          }}
+        />
+      )}
     </div>
   );
 }

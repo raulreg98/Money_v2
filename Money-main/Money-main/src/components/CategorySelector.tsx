@@ -180,10 +180,10 @@ export function CategoryBadge({ category, size = 'sm' }: { category: Category | 
   if (!category) return <span className="text-slate-600 text-sm">—</span>;
   const Icon = getIcon(category.icon) || getIcon(suggestIcon(category.name));
   const cls = size === 'xs' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  const parent = category.parent_id ? null : category;
-  const color = category.color || '#6b7280';
+  const color = category.color || '#3b82f6';
   return (
     <span className="inline-flex items-center gap-1.5">
+      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
       {Icon && <Icon className={`${cls} shrink-0`} style={{ color }} />}
       <span className="text-slate-300 text-sm">{category.name}</span>
     </span>

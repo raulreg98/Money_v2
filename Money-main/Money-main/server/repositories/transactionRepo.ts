@@ -44,8 +44,8 @@ export async function getAllTransactions(): Promise<Transaction[]> {
 export async function getTransactionsByAccount(accountId: number): Promise<Transaction[]> {
   const db = await getDb();
   const result = db.exec(
-    `SELECT ${TX_COLS} FROM transactions WHERE account_id = ? OR to_account_id = ? ORDER BY date DESC, id DESC`,
-    [accountId, accountId],
+    `SELECT ${TX_COLS} FROM transactions WHERE account_id = ? ORDER BY date DESC, id DESC`,
+    [accountId],
   );
   if (result.length === 0) return [];
   return result[0].values.map(rowToTx);

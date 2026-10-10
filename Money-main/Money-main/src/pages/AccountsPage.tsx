@@ -531,8 +531,10 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                       const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
                       const fromName = accName(fromId);
                       const toName = accName(toId);
-                      const outgoingAmt = Math.abs(t.amount);
-                      const incomingAmt = Math.abs(t.to_amount || t.amount);
+                      const displayAmount = isOutgoing
+                        ? `-${formatEUR(Math.abs(t.amount))}`
+                        : formatEUR(Math.abs(t.amount), { sign: true });
+                      const color = isOutgoing ? 'text-red-400' : 'text-emerald-400';
 
                       return (
                         <tr key={t.id} className={`border-b border-slate-800/50 ${selected ? 'bg-blue-600/10' : ''}`}>
@@ -554,12 +556,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                             </div>
                           </td>
                           <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
-                          <td className="px-5 py-2.5 text-right font-medium">
-                            <div className="flex items-center gap-2 justify-end text-xs sm:text-sm">
-                              <span className="text-red-400">-{formatEUR(outgoingAmt)}</span>
-                              <span className="text-emerald-400">+{formatEUR(incomingAmt)}</span>
-                            </div>
-                          </td>
+                          <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                           <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
                           <td className="px-5 py-2.5 text-right">
                             <div className="flex items-center gap-1 justify-end">
@@ -677,7 +674,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Modal({ title, onClose, onSave, saving, error, children }: { title: string; onClose: () => void; onSave: () => void; saving: boolean; error: string; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto pb-16" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] min-h-[420px] overflow-y-auto pb-28" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
         {children}
         {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -768,7 +765,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   );
 }
 
-function AddTransactionModal({ existingTx, accounts, categories, defaultAccountId, onClose }: { existingTx?: Transaction; accounts: Account[]; categories: Category[]; defaultAccountId?: number; onClose: () => void }) {
+export function AddTransactionModal({ existingTx, accounts, categories, defaultAccountId, onClose }: { existingTx?: Transaction; accounts: Account[]; categories: Category[]; defaultAccountId?: number; onClose: () => void }) {
   const [type, setType] = useState(existingTx?.type || 'gasto');
   const [date, setDate] = useState(existingTx?.date || new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState(existingTx ? Math.abs(existingTx.amount).toString() : '');
