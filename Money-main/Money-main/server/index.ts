@@ -316,7 +316,22 @@ async function main() {
       );
     }
 
-    const pagedTx = filtered.slice(offset, offset + limit);
+    // Calcular saldo acumulado para todas las transacciones de la cuenta
+    const sortedByDateAsc = [...allTx].filter(t => t.account_id === accountId).sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.id - b.id;
+    });
+    let runningAccBalance = account.initial_balance;
+    const runningMap = new Map<number, number>();
+    for (const t of sortedByDateAsc) {
+      runningAccBalance += t.amount;
+      runningMap.set(t.id, runningAccBalance);
+    }
+
+    const pagedTx = filtered.slice(offset, offset + limit).map(t => ({
+      ...t,
+      running_balance: runningMap.get(t.id) ?? account.initial_balance,
+    }));
 
     // Balance actual
     const balance = account.initial_balance + allTx

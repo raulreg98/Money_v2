@@ -516,6 +516,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                     <th className="px-5 py-2 font-medium">Detalle</th>
                     <th className="px-5 py-2 font-medium">Categoría</th>
                     <th className="px-5 py-2 font-medium text-right">Importe</th>
+                    <th className="px-5 py-2 font-medium text-right">Saldo tras mov.</th>
                     <th className="px-5 py-2"></th>
                   </tr>
                 </thead>
@@ -524,7 +525,9 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                     const toAccName = t.to_account_id ? accName(t.to_account_id) : null;
                     const isExpense = t.type === 'gasto' || (t.type === 'transferencia' && t.amount < 0);
                     const color = isExpense ? 'text-red-400' : 'text-emerald-400';
+                    const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
                     const selected = selectedTxIds.has(t.id);
+                    const runningBal = (t as any).running_balance;
                     return (
                       <tr key={t.id} className={`border-b border-slate-800/50 ${selected ? 'bg-blue-600/10' : ''}`}>
                         <td className="px-3 py-2.5">
@@ -539,7 +542,8 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                           {toAccName && <span className="text-slate-600"> → {toAccName}</span>}
                         </td>
                         <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
-                        <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(Math.abs(t.amount), { sign: true })}</td>
+                        <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
+                        <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
                         <td className="px-5 py-2.5 text-right">
                           <div className="flex items-center gap-1 justify-end">
                             <button
@@ -613,7 +617,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Modal({ title, onClose, onSave, saving, error, children }: { title: string; onClose: () => void; onSave: () => void; saving: boolean; error: string; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto pb-16" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
         {children}
         {error && <p className="text-red-400 text-sm">{error}</p>}

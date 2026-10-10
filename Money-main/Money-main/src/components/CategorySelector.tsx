@@ -70,10 +70,11 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
         className={inputCls + ' flex items-center gap-2 text-left'}
       >
         {selectedCat ? (
-          <>
-            {SelectedIcon && <SelectedIcon className="w-4 h-4 shrink-0" style={{ color: selectedCat.color }} />}
+          <div className="flex items-center gap-2 truncate">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: selectedCat.color || '#3b82f6' }} />
+            {SelectedIcon && <SelectedIcon className="w-4 h-4 shrink-0" style={{ color: selectedCat.color || '#3b82f6' }} />}
             <span className="text-slate-200 truncate">{selectedCat.name}</span>
-          </>
+          </div>
         ) : (
           <span className="text-slate-500">{allowEmpty ? 'Sin categoría' : 'Seleccionar…'}</span>
         )}
@@ -107,6 +108,7 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
             {filtered(parents).map((parent) => {
               const Icon = getIcon(parent.icon) || getIcon(suggestIcon(parent.name));
               const subs = filtered(childrenOf(parent.id));
+              const parentColor = parent.color || '#3b82f6';
               return (
                 <div key={parent.id}>
                   <button
@@ -114,20 +116,23 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
                     onClick={() => { onChange(String(parent.id)); setOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 transition-colors"
                   >
-                    {Icon && <Icon className="w-4 h-4 shrink-0" style={{ color: parent.color }} />}
-                    <span className="truncate">{parent.name}</span>
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: parentColor }} />
+                    {Icon && <Icon className="w-4 h-4 shrink-0" style={{ color: parentColor }} />}
+                    <span className="truncate font-medium">{parent.name}</span>
                   </button>
                   {subs.map((sub) => {
                     const SubIcon = getIcon(sub.icon) || getIcon(suggestIcon(sub.name));
+                    const subColor = sub.color || parentColor;
                     return (
                       <button
                         key={sub.id}
                         type="button"
                         onClick={() => { onChange(String(sub.id)); setOpen(false); }}
-                        className="w-full flex items-center gap-2 pl-7 pr-3 py-1.5 text-sm text-slate-400 hover:bg-slate-800 transition-colors"
+                        className="w-full flex items-center gap-2 pl-6 pr-3 py-1.5 text-sm text-slate-400 hover:bg-slate-800 transition-colors"
                       >
                         <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
-                        {SubIcon && <SubIcon className="w-3.5 h-3.5 shrink-0" style={{ color: sub.color || parent.color }} />}
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: subColor }} />
+                        {SubIcon && <SubIcon className="w-3.5 h-3.5 shrink-0" style={{ color: subColor }} />}
                         <span className="truncate">{sub.name}</span>
                       </button>
                     );
