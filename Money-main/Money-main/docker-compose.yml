@@ -1,0 +1,17 @@
+services:
+  mi-patrimonio:
+    build: .
+    container_name: mi-patrimonio
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - mi-patrimonio-data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/data/app.db
+      - TZ=Europe/Madrid
+
+volumes:
+  mi-patrimonio-data:
