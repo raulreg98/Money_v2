@@ -447,8 +447,8 @@ async function main() {
   });
 
   const txSchema = z.object({
-    type: z.enum(['gasto', 'ingreso', 'transferencia']),
-    date: z.string(), amount: z.number().positive(),
+    type: z.enum(['gasto', 'ingreso', 'transferencia', 'ajuste']),
+    date: z.string(), amount: z.number(),
     account_id: z.number(), to_account_id: z.number().nullable().optional(),
     to_amount: z.number().nullable().optional(), note: z.string().nullable().optional(),
     tags: z.string().nullable().optional(),
@@ -836,8 +836,8 @@ async function main() {
     const accounts = await accountRepo.getAllAccountsWithArchived();
     const categories = await categoryRepo.getAllCategories();
 
-    // Filtrar transferencias (no cuentan como gasto ni ingreso)
-    let txs = allTx.filter(t => t.type !== 'transferencia');
+    // Filtrar transferencias y ajustes (no cuentan como gasto ni ingreso global)
+    let txs = allTx.filter(t => t.type !== 'transferencia' && t.type !== 'ajuste');
 
     // Filtro por periodo
     const now = new Date();

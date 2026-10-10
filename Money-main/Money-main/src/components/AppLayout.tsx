@@ -157,21 +157,29 @@ function SidebarContent({
 
         {/* Desplegable de Cuentas */}
         <div>
-          <button
-            onClick={() => {
-              if (current !== 'accounts') onNavigate('accounts');
-              setAccountsOpen(!accountsOpen);
-            }}
+          <div
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               current === 'accounts' ? 'bg-blue-600/15 text-blue-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <div className="flex items-center gap-3">
+            <button
+              onClick={() => onNavigate('accounts')}
+              className="flex items-center gap-3 flex-1 text-left"
+            >
               <Wallet className="w-5 h-5 shrink-0" />
               <span>Cuentas</span>
-            </div>
-            {accountsOpen ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-          </button>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setAccountsOpen(!accountsOpen);
+              }}
+              className="p-1 hover:text-white transition-colors"
+              title="Desplegar cuentas"
+            >
+              {accountsOpen ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+            </button>
+          </div>
 
           {accountsOpen && (
             <div className="pl-6 pr-1 py-1.5 space-y-2">
@@ -185,7 +193,7 @@ function SidebarContent({
                       className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
                     >
                       <span className="truncate">{a.name}</span>
-                      <span className="text-slate-300 font-medium ml-2">{formatEUR(getAccountBalance(a), { compact: true })}</span>
+                      <span className="text-slate-300 font-medium ml-2">{formatEUR(getAccountBalance(a))}</span>
                     </button>
                   ))}
                 </div>
@@ -201,7 +209,7 @@ function SidebarContent({
                       className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
                     >
                       <span className="truncate">{a.name}</span>
-                      <span className="text-slate-300 font-medium ml-2">{formatEUR(getAccountBalance(a), { compact: true })}</span>
+                      <span className="text-slate-300 font-medium ml-2">{formatEUR(getAccountBalance(a))}</span>
                     </button>
                   ))}
                 </div>

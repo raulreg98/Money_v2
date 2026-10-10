@@ -212,4 +212,13 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 10,
+    sql: `
+      ALTER TABLE products ADD COLUMN color TEXT;
+      ALTER TABLE products ADD COLUMN country_breakdown TEXT;
+      ALTER TABLE products ADD COLUMN sector_breakdown TEXT;
+      ALTER TABLE products ADD COLUMN top_holdings TEXT;
+    `,
+  },
 ];
