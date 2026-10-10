@@ -228,6 +228,9 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const [selectedTxIds, setSelectedTxIds] = useState<Set<number>>(new Set());
   const [bulkCategory, setBulkCategory] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState('');
+  const [showAdjustBalance, setShowAdjustBalance] = useState(false);
+  const [targetBalance, setTargetBalance] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
   const loadSummary = () => {
     const { desde, hasta } = periodToRange(period);
@@ -262,9 +265,6 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   }
 
   const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
-  const [showAdjustBalance, setShowAdjustBalance] = useState(false);
-  const [targetBalance, setTargetBalance] = useState(balance.toString());
-  const [adjusting, setAdjusting] = useState(false);
 
   const handleAdjustBalance = async () => {
     const target = parseFloat(targetBalance);
