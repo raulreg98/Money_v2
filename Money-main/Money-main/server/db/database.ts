@@ -18,8 +18,12 @@ async function loadSqlJs() {
   if (!sqlModule) {
     sqlModule = await initSqlJs({
       locateFile: (file: string) => {
-        const wasmPath = require.resolve('sql.js/dist/' + file);
-        return wasmPath;
+        try {
+          if (typeof require !== 'undefined' && require.resolve) {
+            return require.resolve('sql.js/dist/' + file);
+          }
+        } catch {}
+        return join(process.cwd(), 'node_modules', 'sql.js', 'dist', file);
       },
     });
   }

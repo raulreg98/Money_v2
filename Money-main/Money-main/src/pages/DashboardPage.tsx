@@ -96,13 +96,14 @@ export function DashboardPage() {
                 {recentTxs.map((t) => {
                   const isExpense = t.type === 'gasto' || (t.type === 'transferencia' && t.amount < 0);
                   const color = isExpense ? 'text-red-400' : 'text-emerald-400';
+                  const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
                   return (
                     <tr key={t.id} className="border-b border-slate-800/50">
                       <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
                       <td className="px-5 py-2.5 text-slate-400">{accName(t.account_id)}</td>
                       <td className="px-5 py-2.5 text-slate-400">{t.note || '—'}</td>
                       <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
-                      <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(Math.abs(t.amount), { sign: true })}</td>
+                      <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                     </tr>
                   );
                 })}
