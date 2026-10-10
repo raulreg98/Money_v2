@@ -353,16 +353,47 @@ function MoneymatterPreview({ preview, executing, onImport, onCancel }: {
 }) {
   const [editedData, setEditedData] = useState(preview);
   const [tab, setTab] = useState<'summary' | 'transactions'>('summary');
+  const [onlyAnomalies, setOnlyAnomalies] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
   const c = editedData.counts;
 
-  const handleTxChange = (index: number, field: string, value: any) => {
+  const checkAnomaly = (tx: any) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isFuture = tx.date > todayStr;
+    const isTooOld = tx.date < '1990-01-01';
+    const isMassive = Math.abs(tx.amount) > 10000;
+    const isNegative = tx.amount < 0;
+    const isMissingAccount = !tx.accountExternalId;
+    const isUnknownType = !['gasto', 'ingreso', 'transferencia'].includes(tx.type);
+
+    return isFuture || isTooOld || isMassive || isNegative || isMissingAccount || isUnknownType;
+  };
+
+  const handleTxChange = (originalIndex: number, field: string, value: any) => {
     const updated = { ...editedData };
     const txs = [...updated.parsedData.transactions];
-    txs[index] = { ...txs[index], [field]: value };
+    txs[originalIndex] = { ...txs[originalIndex], [field]: value };
     updated.parsedData.transactions = txs;
     setEditedData(updated);
   };
+
+  const allTxsWithIndex = editedData.parsedData.transactions.map((tx: any, originalIndex: number) => ({
+    tx,
+    originalIndex,
+    isAnomaly: checkAnomaly(tx),
+  }));
+
+  const filteredTxs = onlyAnomalies
+    ? allTxsWithIndex.filter((item: any) => item.isAnomaly)
+    : allTxsWithIndex;
+
+  const totalPages = Math.max(1, Math.ceil(filteredTxs.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageTxs = filteredTxs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const anomalyCount = allTxsWithIndex.filter((item: any) => item.isAnomaly).length;
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto">
@@ -377,7 +408,7 @@ function MoneymatterPreview({ preview, executing, onImport, onCancel }: {
           onClick={() => setTab('transactions')}
           className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${tab === 'transactions' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
         >
-          Editar / Corregir Transacciones
+          Editar / Corregir Transacciones {anomalyCount > 0 && `(${anomalyCount} avisos)`}
         </button>
       </div>
 
@@ -411,61 +442,114 @@ function MoneymatterPreview({ preview, executing, onImport, onCancel }: {
       )}
 
       {tab === 'transactions' && (
-        <div className="overflow-x-auto max-h-80">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-slate-400 text-left border-b border-slate-800">
-                <th className="p-2 font-medium">Fecha</th>
-                <th className="p-2 font-medium">Tipo</th>
-                <th className="p-2 font-medium">Importe (€)</th>
-                <th className="p-2 font-medium">Nota / Concepto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {editedData.parsedData.transactions.slice(0, 50).map((tx: any, idx: number) => (
-                <tr key={idx} className="border-b border-slate-800/50">
-                  <td className="p-2">
-                    <input
-                      type="date"
-                      value={tx.date}
-                      onChange={(e) => handleTxChange(idx, 'date', e.target.value)}
-                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs outline-none"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <select
-                      value={tx.type}
-                      onChange={(e) => handleTxChange(idx, 'type', e.target.value)}
-                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs outline-none"
-                    >
-                      <option value="gasto">Gasto</option>
-                      <option value="ingreso">Ingreso</option>
-                    </select>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="number"
-                      step="any"
-                      value={tx.amount}
-                      onChange={(e) => handleTxChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs w-20 outline-none"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      value={tx.note || ''}
-                      onChange={(e) => handleTxChange(idx, 'note', e.target.value)}
-                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs w-full outline-none"
-                    />
-                  </td>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2 bg-slate-800/50 p-2.5 rounded-lg text-xs">
+            <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+              <input
+                type="checkbox"
+                checked={onlyAnomalies}
+                onChange={(e) => {
+                  setOnlyAnomalies(e.target.checked);
+                  setPage(1);
+                }}
+                className="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-0"
+              />
+              <span>Mostrar solo posibles anomalías / discrepancias ({anomalyCount})</span>
+            </label>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2 text-slate-400">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  className="px-2 py-1 bg-slate-800 rounded hover:bg-slate-700 disabled:opacity-40"
+                >
+                  Anterior
+                </button>
+                <span>Pág {currentPage} de {totalPages}</span>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  className="px-2 py-1 bg-slate-800 rounded hover:bg-slate-700 disabled:opacity-40"
+                >
+                  Siguiente
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-x-auto max-h-80">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-slate-400 text-left border-b border-slate-800">
+                  <th className="p-2 font-medium">Estado</th>
+                  <th className="p-2 font-medium">Fecha</th>
+                  <th className="p-2 font-medium">Tipo</th>
+                  <th className="p-2 font-medium">Importe (€)</th>
+                  <th className="p-2 font-medium">Nota / Concepto</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {editedData.parsedData.transactions.length > 50 && (
-            <p className="text-slate-500 text-xs mt-2 text-center">Mostrando las primeras 50 transacciones de {editedData.parsedData.transactions.length}</p>
-          )}
+              </thead>
+              <tbody>
+                {pageTxs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-slate-500">No hay transacciones para mostrar.</td>
+                  </tr>
+                ) : (
+                  pageTxs.map(({ tx, originalIndex, isAnomaly }: any) => (
+                    <tr key={originalIndex} className={`border-b border-slate-800/50 ${isAnomaly ? 'bg-amber-950/20' : ''}`}>
+                      <td className="p-2">
+                        {isAnomaly ? (
+                          <span className="inline-flex items-center gap-1 text-amber-400 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-900/30 border border-amber-800">
+                            <AlertTriangle className="w-3 h-3" /> Aviso
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">OK</span>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="date"
+                          value={tx.date}
+                          onChange={(e) => handleTxChange(originalIndex, 'date', e.target.value)}
+                          className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs outline-none"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <select
+                          value={tx.type}
+                          onChange={(e) => handleTxChange(originalIndex, 'type', e.target.value)}
+                          className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs outline-none"
+                        >
+                          <option value="gasto">Gasto</option>
+                          <option value="ingreso">Ingreso</option>
+                        </select>
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="number"
+                          step="any"
+                          value={tx.amount}
+                          onChange={(e) => handleTxChange(originalIndex, 'amount', parseFloat(e.target.value) || 0)}
+                          className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs w-20 outline-none"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="text"
+                          value={tx.note || ''}
+                          onChange={(e) => handleTxChange(originalIndex, 'note', e.target.value)}
+                          className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs w-full outline-none"
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-slate-500 text-xs text-center">
+            Mostrando {pageTxs.length} de {filteredTxs.length} transacciones {onlyAnomalies ? '(filtrado por anomalías)' : ''}
+          </p>
         </div>
       )}
 

@@ -2,8 +2,10 @@ import initSqlJs, { type Database } from 'sql.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, renameSync, copyFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { EventEmitter } from 'events';
+import { createRequire } from 'module';
 import { MIGRATIONS } from './migrations';
 
+const require = createRequire(import.meta.url);
 const DB_PATH = process.env.DB_PATH || '/data/app.db';
 const SAVE_DELAY_MS = 500;
 

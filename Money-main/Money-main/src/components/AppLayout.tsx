@@ -72,17 +72,30 @@ function SidebarContent({
   const [transactions, setTransactions] = useState<any[]>([]);
 
   useEffect(() => {
-    Promise.all([api.getAccounts(), api.getTransactions()])
-      .then(([accs, txs]) => {
-        setAccounts(accs.filter((a: any) => !a.archived));
-        setTransactions(txs);
-      })
-      .catch(() => {});
-  }, []);
+    let active = true;
+    const loadData = () => {
+      Promise.all([api.getAccounts(), api.getTransactions()])
+        .then(([accs, txs]) => {
+          if (!active) return;
+          setAccounts(accs.filter((a: any) => !a.archived));
+          setTransactions(txs);
+        })
+        .catch(() => {});
+    };
+    loadData();
+    const interval = setInterval(loadData, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [current, accountsOpen]);
+
+  const normalizeType = (t?: string) =>
+    (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
   const normalTypes = ['corriente', 'efectivo', 'ahorro', 'tarjeta'];
-  const corrienteAccounts = accounts.filter(a => normalTypes.includes(a.type));
-  const inversionAccounts = accounts.filter(a => a.type === 'inversion');
+  const inversionAccounts = accounts.filter(a => normalizeType(a.type) === 'inversion');
+  const corrienteAccounts = accounts.filter(a => normalizeType(a.type) !== 'inversion');
 
   const getAccountBalance = (acc: any) => {
     const txs = transactions.filter((t: any) => t.account_id === acc.id);

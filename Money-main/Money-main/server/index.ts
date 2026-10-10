@@ -1541,7 +1541,7 @@ async function main() {
   });
 
   // === Estático (client compilado) ===
-  const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
+  const clientDist = path.resolve(process.cwd(), 'client', 'dist');
   app.use(express.static(clientDist));
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'Ruta no encontrada' });
