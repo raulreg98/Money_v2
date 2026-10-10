@@ -4,7 +4,7 @@ import type { Account, Transaction, Category } from '@/types';
 import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
 import { formatEUR, formatDate, formatAxisEUR, formatUnits, ACCOUNT_TYPES, CHART_COLORS } from '@/lib/format';
-import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X, Landmark } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid,
@@ -522,12 +522,72 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                 </thead>
                 <tbody>
                   {transactions.map((t: Transaction) => {
-                    const toAccName = t.to_account_id ? accName(t.to_account_id) : null;
-                    const isExpense = t.type === 'gasto' || (t.type === 'transferencia' && t.amount < 0);
-                    const color = isExpense ? 'text-red-400' : 'text-emerald-400';
-                    const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
                     const selected = selectedTxIds.has(t.id);
                     const runningBal = (t as any).running_balance;
+
+                    if (t.type === 'transferencia') {
+                      const isOutgoing = t.amount < 0;
+                      const fromId = isOutgoing ? t.account_id : (t.to_account_id || t.account_id);
+                      const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
+                      const fromName = accName(fromId);
+                      const toName = accName(toId);
+                      const outgoingAmt = Math.abs(t.amount);
+                      const incomingAmt = Math.abs(t.to_amount || t.amount);
+
+                      return (
+                        <tr key={t.id} className={`border-b border-slate-800/50 ${selected ? 'bg-blue-600/10' : ''}`}>
+                          <td className="px-3 py-2.5">
+                            <button onClick={() => toggleSelectTx(t.id)} className="text-slate-500 hover:text-blue-400">
+                              {selected ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                            </button>
+                          </td>
+                          <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
+                          <td className="px-5 py-2.5"><TxBadge type={t.type} /></td>
+                          <td className="px-5 py-2.5">
+                            <div className="flex items-center gap-1.5 font-medium text-slate-200 text-sm">
+                              <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span>{fromName}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0 mx-0.5" />
+                              <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span>{toName}</span>
+                              {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
+                          <td className="px-5 py-2.5 text-right font-medium">
+                            <div className="flex items-center gap-2 justify-end text-xs sm:text-sm">
+                              <span className="text-red-400">-{formatEUR(outgoingAmt)}</span>
+                              <span className="text-emerald-400">+{formatEUR(incomingAmt)}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
+                          <td className="px-5 py-2.5 text-right">
+                            <div className="flex items-center gap-1 justify-end">
+                              <button
+                                onClick={() => setEditingTx(t)}
+                                className="text-slate-600 hover:text-blue-400 transition-colors"
+                                title="Editar"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={async () => { await api.deleteTransaction(t.id); loadSummary(); }}
+                                className="text-slate-600 hover:text-red-400 transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const isExpense = t.type === 'gasto';
+                    const color = isExpense ? 'text-red-400' : 'text-emerald-400';
+                    const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
+                    const toAccName = t.to_account_id ? accName(t.to_account_id) : null;
+
                     return (
                       <tr key={t.id} className={`border-b border-slate-800/50 ${selected ? 'bg-blue-600/10' : ''}`}>
                         <td className="px-3 py-2.5">

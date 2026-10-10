@@ -4,7 +4,7 @@ import type { DashboardData, PortfolioSummary, Transaction, Account, Category } 
 import { Card, StatCard } from '@/components/Card';
 import { formatEUR, formatPercent, formatDate } from '@/lib/format';
 import { CategoryBadge } from '@/components/CategorySelector';
-import { Wallet, Briefcase, TrendingUp, PiggyBank } from 'lucide-react';
+import { Wallet, Briefcase, TrendingUp, PiggyBank, Landmark, ArrowRight } from 'lucide-react';
 
 export function DashboardPage() {
   const [dash, setDash] = useState<DashboardData | null>(null);
@@ -94,7 +94,41 @@ export function DashboardPage() {
               </thead>
               <tbody>
                 {recentTxs.map((t) => {
-                  const isExpense = t.type === 'gasto' || (t.type === 'transferencia' && t.amount < 0);
+                  const isTransfer = t.type === 'transferencia';
+                  if (isTransfer) {
+                    const isOutgoing = t.amount < 0;
+                    const fromId = isOutgoing ? t.account_id : (t.to_account_id || t.account_id);
+                    const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
+                    const fromName = accName(fromId);
+                    const toName = accName(toId);
+                    const outgoingAmt = Math.abs(t.amount);
+                    const incomingAmt = Math.abs(t.to_amount || t.amount);
+
+                    return (
+                      <tr key={t.id} className="border-b border-slate-800/50">
+                        <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
+                        <td colSpan={2} className="px-5 py-2.5">
+                          <div className="flex items-center gap-1.5 font-medium text-slate-200 text-sm">
+                            <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            <span>{fromName}</span>
+                            <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0 mx-0.5" />
+                            <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            <span>{toName}</span>
+                            {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
+                          </div>
+                        </td>
+                        <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
+                        <td className="px-5 py-2.5 text-right font-medium">
+                          <div className="flex items-center gap-2 justify-end text-xs sm:text-sm">
+                            <span className="text-red-400">-{formatEUR(outgoingAmt)}</span>
+                            <span className="text-emerald-400">+{formatEUR(incomingAmt)}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const isExpense = t.type === 'gasto';
                   const color = isExpense ? 'text-red-400' : 'text-emerald-400';
                   const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
                   return (
