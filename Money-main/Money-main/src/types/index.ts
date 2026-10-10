@@ -17,6 +17,10 @@ export interface Product {
   alt_source: string | null;
   alt_symbol: string | null;
   account_id: number | null;
+  color: string | null;
+  country_breakdown: string | null;
+  sector_breakdown: string | null;
+  top_holdings: string | null;
 }
 
 export interface Movement {

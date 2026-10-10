@@ -14,10 +14,10 @@ export function formatEUR(value: number, options?: { compact?: boolean; sign?: b
   const absValue = Math.abs(v);
 
   if (compact && absValue >= 1_000_000) {
-    return `${(v / 1_000_000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M €`;
+    return `${(v / 1_000_000).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} M €`;
   }
   if (compact && absValue >= 10_000) {
-    return `${(v / 1000).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}k €`;
+    return `${(v / 1000).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}k €`;
   }
 
   const formatted = absValue.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -44,10 +44,10 @@ export function formatCompact(value: number): string {
   const absValue = Math.abs(v);
 
   if (absValue >= 1_000_000) {
-    return `${(v / 1_000_000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} M`;
+    return `${(v / 1_000_000).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} M`;
   }
   if (absValue >= 10_000) {
-    return `${(v / 1000).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} k`;
+    return `${(v / 1000).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} k`;
   }
 
   return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -101,16 +101,16 @@ export function monthNameFull(month: number): string {
 }
 
 export const PRODUCT_TYPES: Record<string, string> = {
+  materia_prima: 'Materias primas',
+  cripto: 'Cripto',
+  renta_variable: 'Renta variable',
+  fondo_monetario: 'Fondo monetario',
   fondo: 'Fondo',
   etf: 'ETF',
   accion: 'Acción',
-  cripto: 'Cripto',
-  materia_prima: 'Materia prima',
   bono: 'Bono',
   plan_pension: 'Plan de pensiones',
   cuenta_efectivo: 'Cuenta/Efectivo',
-  inmueble: 'Inmueble',
-  deuda: 'Deuda',
 };
 
 export const ACCOUNT_TYPES: Record<string, string> = {

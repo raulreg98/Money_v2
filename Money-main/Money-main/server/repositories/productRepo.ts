@@ -19,6 +19,10 @@ export interface Product {
   alt_source: string | null;
   alt_symbol: string | null;
   account_id: number | null;
+  color: string | null;
+  country_breakdown: string | null;
+  sector_breakdown: string | null;
+  top_holdings: string | null;
 }
 
 function rowToProduct(row: any[]): Product {
@@ -41,6 +45,10 @@ function rowToProduct(row: any[]): Product {
     alt_source: (row[15] as string) ?? null,
     alt_symbol: (row[16] as string) ?? null,
     account_id: (row[17] as number) ?? null,
+    color: (row[18] as string) ?? null,
+    country_breakdown: (row[19] as string) ?? null,
+    sector_breakdown: (row[20] as string) ?? null,
+    top_holdings: (row[21] as string) ?? null,
   };
 }
 
@@ -65,17 +73,19 @@ export async function getProductById(id: number): Promise<Product | null> {
   return rowToProduct(result[0].values[0]);
 }
 
-export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'archived' | 'manual_price' | 'long_term' | 'alt_source' | 'alt_symbol' | 'account_id'> & {
-  manual_price?: number; long_term?: number; archived?: number; alt_source?: string | null; alt_symbol?: string | null; account_id?: number | null
+export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'archived' | 'manual_price' | 'long_term' | 'alt_source' | 'alt_symbol' | 'account_id' | 'color' | 'country_breakdown' | 'sector_breakdown' | 'top_holdings'> & {
+  manual_price?: number; long_term?: number; archived?: number; alt_source?: string | null; alt_symbol?: string | null; account_id?: number | null;
+  color?: string | null; country_breakdown?: string | null; sector_breakdown?: string | null; top_holdings?: string | null;
 }): Promise<number> {
   const db = await getDb();
   db.run(
-    `INSERT INTO products (name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, alt_source, alt_symbol, account_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, alt_source, alt_symbol, account_id, color, country_breakdown, sector_breakdown, top_holdings)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name, data.type, data.isin ?? null, data.ticker ?? null, data.currency, data.price_source ?? null,
       data.ter ?? null, data.risk ?? null, data.category ?? null, data.manual_price ?? 0, data.long_term ?? 1, data.archived ?? 0,
       data.alt_source ?? null, data.alt_symbol ?? null, data.account_id ?? null,
+      data.color ?? null, data.country_breakdown ?? null, data.sector_breakdown ?? null, data.top_holdings ?? null,
     ],
   );
   scheduleSave();

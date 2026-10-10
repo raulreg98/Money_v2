@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 
 interface ProductEvolutionChartProps {
-  products: { id: number; name: string }[];
+  products: { id: number; name: string; color?: string | null }[];
 }
 
 type Metric = 'valor' | 'rentabilidad' | 'pure_return' | 'pure_return_percent';
@@ -52,7 +52,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
   const [error, setError] = useState('');
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
-  // Load saved settings
+  // Load saved settings (Default to ALL products as requested)
   useEffect(() => {
     api.getSettings().then((settings) => {
       const savedSel = settings['inversiones_chart_selected'];
@@ -64,9 +64,9 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
       if (savedSel) {
         const ids = savedSel.split(',').map(Number).filter(n => !isNaN(n));
         const validIds = ids.filter(id => products.some(p => p.id === id));
-        setSelected(validIds.length > 0 ? validIds : products.slice(0, 5).map(p => p.id));
+        setSelected(validIds.length > 0 ? validIds : products.map(p => p.id));
       } else {
-        setSelected(products.slice(0, 5).map(p => p.id));
+        setSelected(products.map(p => p.id));
       }
       if (savedMetric === 'valor' || savedMetric === 'rentabilidad' || savedMetric === 'pure_return' || savedMetric === 'pure_return_percent') setMetric(savedMetric);
       if (savedPeriod && PERIODS.some(p => p.id === savedPeriod)) setPeriod(savedPeriod as Period);
@@ -75,7 +75,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
       if (savedTo) setCustomTo(savedTo);
       setSettingsLoaded(true);
     }).catch(() => {
-      setSelected(products.slice(0, 5).map(p => p.id));
+      setSelected(products.map(p => p.id));
       setSettingsLoaded(true);
     });
   }, [products]);
@@ -198,11 +198,14 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
   const formatY = (v: number) => isPercent ? formatAxisPercent(v) : formatAxisEUR(v);
   const formatTooltip = (v: any) => isPercent ? formatPercent(Number(v)) : formatEUR(Number(v), { sign: metric === 'pure_return' });
 
-  const lines = selected.map(id => ({
-    key: `p${id}`,
-    name: products.find(p => p.id === id)?.name || `#${id}`,
-    color: colorForId(id),
-  }));
+  const lines = selected.map(id => {
+    const p = products.find(prod => prod.id === id);
+    return {
+      key: `p${id}`,
+      name: p?.name || `#${id}`,
+      color: p?.color || colorForId(id),
+    };
+  });
 
   return (
     <Card className="p-5">

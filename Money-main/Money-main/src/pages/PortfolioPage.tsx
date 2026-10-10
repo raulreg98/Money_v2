@@ -19,6 +19,11 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [summary, setSummary] = useState<{ productDetails: any[] } | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [allMovements, setAllMovements] = useState<any[]>([]);
+  const [sortField, setSortField] = useState<string>('value');
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
+  const [txFilterProduct, setTxFilterProduct] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -28,10 +33,15 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
 
   const loadData = () => {
     Promise.all([api.getProducts(), api.getPortfolioSummary(), api.getAccounts()])
-      .then(([prods, summ, accs]) => {
+      .then(async ([prods, summ, accs]) => {
         setProducts(prods);
         setSummary(summ);
         setAccounts(accs);
+        // Load movements for movements table
+        const movPromises = prods.map(p => api.getMovements(p.id).catch(() => []));
+        const movResults = await Promise.all(movPromises);
+        const flat = movResults.flat();
+        setAllMovements(flat);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -64,16 +74,84 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
     );
   }
 
+  const filteredProducts = selectedAccountId
+    ? products.filter(p => p.account_id === parseInt(selectedAccountId))
+    : products;
+
   const detailMap = new Map((summary?.productDetails || []).map((d: any) => [d.id, d]));
+
+  // Calculate top summary metrics
+  let totalInvestedAcc = 0;
+  let totalValueAcc = 0;
+  for (const p of filteredProducts) {
+    const d = detailMap.get(p.id);
+    if (d) {
+      totalInvestedAcc += d.invested || 0;
+      totalValueAcc += d.value || 0;
+    }
+  }
+  const totalGainAcc = totalValueAcc - totalInvestedAcc;
+  const totalRetAcc = totalInvestedAcc > 0 ? (totalGainAcc / totalInvestedAcc) * 100 : 0;
+  const gainColor = totalGainAcc > 0 ? 'text-emerald-400' : totalGainAcc < 0 ? 'text-red-400' : 'text-slate-400';
+
+  // Sort products
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const da = detailMap.get(a.id);
+    const db = detailMap.get(b.id);
+    let valA: any = 0;
+    let valB: any = 0;
+
+    if (sortField === 'name') { valA = a.name; valB = b.name; }
+    else if (sortField === 'type') { valA = PRODUCT_TYPES[a.type] || a.type; valB = PRODUCT_TYPES[b.type] || b.type; }
+    else if (sortField === 'account') { valA = accounts.find(ac => ac.id === a.account_id)?.name || ''; valB = accounts.find(ac => ac.id === b.account_id)?.name || ''; }
+    else if (sortField === 'value') { valA = da?.value || 0; valB = db?.value || 0; }
+    else if (sortField === 'invested') { valA = da?.invested || 0; valB = db?.invested || 0; }
+    else if (sortField === 'gain') { valA = da?.gain || 0; valB = db?.gain || 0; }
+    else if (sortField === 'ret') {
+      valA = (da?.invested || 0) > 0 ? (da!.gain / da!.invested) : 0;
+      valB = (db?.invested || 0) > 0 ? (db!.gain / db!.invested) : 0;
+    }
+
+    if (typeof valA === 'string') {
+      return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    }
+    return sortAsc ? valA - valB : valB - valA;
+  });
+
+  const handleSort = (field: string) => {
+    if (sortField === field) setSortAsc(!sortAsc);
+    else { setSortField(field); setSortAsc(false); }
+  };
+
+  // Investment movements history
+  const filteredMovements = allMovements
+    .filter(m => {
+      const prod = products.find(p => p.id === m.product_id);
+      if (!prod) return false;
+      if (selectedAccountId && prod.account_id !== parseInt(selectedAccountId)) return false;
+      if (txFilterProduct && prod.id !== parseInt(txFilterProduct)) return false;
+      return m.type === 'compra' || m.type === 'saldo';
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Inversiones</h1>
           <p className="text-slate-400 text-sm mt-1">Tus productos de inversión</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <select
+            value={selectedAccountId}
+            onChange={(e) => setSelectedAccountId(e.target.value)}
+            className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none"
+          >
+            <option value="">Todas las cuentas de inversión</option>
+            {accounts.filter((a: any) => a.type === 'inversion').map((a: any) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
           <button
             onClick={updateAllPrices}
             disabled={updatingPrices}
@@ -90,10 +168,26 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         </div>
       </div>
 
+      {/* Métricas de resumen general */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <MiniStat label="Total aportado" value={formatEUR(totalInvestedAcc)} />
+        <MiniStat label="Ganancias" value={formatEUR(totalGainAcc, { sign: true })} valueClass={gainColor} />
+        <MiniStat label="Rentabilidad" value={formatPercent(totalRetAcc)} valueClass={gainColor} />
+      </div>
+
       {error && <Card className="p-4"><p className="text-red-400 text-sm">{error}</p></Card>}
       {priceMessage && <Card className="p-3"><p className="text-slate-300 text-sm">{priceMessage}</p></Card>}
 
-      {products.length > 0 && <ProductEvolutionChart products={products.map(p => ({ id: p.id, name: p.name }))} />}
+      {products.length > 0 && <ProductEvolutionChart products={products.map(p => ({ id: p.id, name: p.name, color: p.color }))} />}
+
+      {/* 5 Nuevos Gráficos de Inversiones */}
+      {products.length > 0 && (
+        <InvestmentDashboardCharts
+          products={filteredProducts}
+          detailMap={detailMap}
+          allMovements={allMovements}
+        />
+      )}
 
       {products.length === 0 ? (
         <Card className="p-12 text-center">
@@ -103,36 +197,36 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-slate-400 text-left border-b border-slate-800">
-                <th className="px-5 py-3 font-medium">Nombre</th>
-                <th className="px-5 py-3 font-medium">Tipo</th>
-                <th className="px-5 py-3 font-medium">Cuenta</th>
-                <th className="px-5 py-3 font-medium text-right">Valor</th>
-                <th className="px-5 py-3 font-medium text-right">Invertido</th>
-                <th className="px-5 py-3 font-medium text-right">G/P</th>
-                <th className="px-5 py-3 font-medium text-right">Rentab.</th>
-                <th className="px-5 py-3 font-medium text-right">Precio</th>
+              <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
+                <th className="px-5 py-3 font-medium hover:text-white" onClick={() => handleSort('name')}>Nombre {sortField === 'name' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-3 font-medium hover:text-white" onClick={() => handleSort('type')}>Tipo {sortField === 'type' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-3 font-medium hover:text-white" onClick={() => handleSort('account')}>Cuenta {sortField === 'account' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-3 font-medium text-right hover:text-white" onClick={() => handleSort('value')}>Valor {sortField === 'value' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-3 font-medium text-right hover:text-white" onClick={() => handleSort('invested')}>Invertido {sortField === 'invested' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-3 font-medium text-right hover:text-white" onClick={() => handleSort('gain')}>G/P {sortField === 'gain' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-3 font-medium text-right hover:text-white" onClick={() => handleSort('ret')}>Rentab. {sortField === 'ret' ? (sortAsc ? '▲' : '▼') : ''}</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => {
+              {sortedProducts.map((p) => {
                 const d = detailMap.get(p.id);
                 const value = d?.value || 0;
                 const invested = d?.invested || 0;
                 const gain = d?.gain || 0;
                 const ret = invested > 0 ? (gain / invested) * 100 : 0;
                 const color = gain > 0 ? 'text-emerald-400' : gain < 0 ? 'text-red-400' : 'text-slate-400';
-                const hasPrice = d?.hasPrice;
                 const estimated = d?.estimated;
-                const priceStale = d?.priceAgeDays != null && d.priceAgeDays > 5;
                 return (
                   <tr
                     key={p.id}
                     onClick={() => onSelect(p.id)}
                     className="border-b border-slate-800/50 hover:bg-slate-800/40 cursor-pointer transition-colors"
                   >
-                    <td className="px-5 py-3 text-white font-medium">{p.name}</td>
+                    <td className="px-5 py-3 text-white font-medium flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || '#3b82f6' }} />
+                      <span>{p.name}</span>
+                    </td>
                     <td className="px-5 py-3 text-slate-400">{PRODUCT_TYPES[p.type] || p.type}</td>
                     <td className="px-5 py-3 text-slate-400">
                       {accounts.find(a => a.id === p.account_id)?.name || '—'}
@@ -144,14 +238,6 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
                     <td className="px-5 py-3 text-right text-slate-400">{formatEUR(invested)}</td>
                     <td className={`px-5 py-3 text-right ${color}`}>{formatEUR(gain, { sign: true })}</td>
                     <td className={`px-5 py-3 text-right ${color}`}>{formatPercent(ret)}</td>
-                    <td className="px-5 py-3 text-right">
-                      {hasPrice ? (
-                        <span className="text-slate-300 text-xs">{d.priceDate}</span>
-                      ) : (
-                        <span className="text-red-400 text-xs">Sin precio</span>
-                      )}
-                      {priceStale && <AlertTriangle className="inline ml-1 w-3 h-3 text-amber-400" />}
-                    </td>
                     <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setDeleteTarget(p)}
@@ -168,6 +254,62 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
           </table>
         </Card>
       )}
+
+      {/* Histórico de Movimientos de Inversión */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-white font-semibold">Histórico de Aportaciones de Inversión</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 text-xs">Filtrar por producto:</span>
+            <select
+              value={txFilterProduct}
+              onChange={(e) => setTxFilterProduct(e.target.value)}
+              className="bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 outline-none"
+            >
+              <option value="">Todos los productos</option>
+              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {filteredMovements.length === 0 ? (
+          <p className="text-slate-500 text-sm p-5">Sin aportaciones registradas</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-slate-400 text-left border-b border-slate-800">
+                <th className="px-5 py-2 font-medium">Fecha</th>
+                <th className="px-5 py-2 font-medium">Producto</th>
+                <th className="px-5 py-2 font-medium text-right">Dinero aportado (€)</th>
+                <th className="px-5 py-2 font-medium text-right">Valor actual (€)</th>
+                <th className="px-5 py-2 font-medium text-right">Ganancia (€)</th>
+                <th className="px-5 py-2 font-medium text-right">Rentabilidad (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMovements.map((m: any) => {
+                const prod = products.find(p => p.id === m.product_id);
+                const d = detailMap.get(m.product_id);
+                const unitPrice = d?.price || (d?.units ? d.value / d.units : 0);
+                const currentValueMov = m.units ? m.units * unitPrice : m.amount_eur;
+                const gainMov = currentValueMov - m.amount_eur;
+                const retMov = m.amount_eur > 0 ? (gainMov / m.amount_eur) * 100 : 0;
+                const color = gainMov > 0 ? 'text-emerald-400' : gainMov < 0 ? 'text-red-400' : 'text-slate-400';
+
+                return (
+                  <tr key={m.id} className="border-b border-slate-800/50">
+                    <td className="px-5 py-2.5 text-slate-300">{formatDate(m.date)}</td>
+                    <td className="px-5 py-2.5 text-white font-medium">{prod?.name || '—'}</td>
+                    <td className="px-5 py-2.5 text-right text-slate-300">{formatEUR(m.amount_eur)}</td>
+                    <td className="px-5 py-2.5 text-right text-slate-200">{formatEUR(currentValueMov)}</td>
+                    <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(gainMov, { sign: true })}</td>
+                    <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatPercent(retMov)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Card>
 
       {showAdd && <AddProductModal onClose={() => { setShowAdd(false); loadData(); }} />}
       {deleteTarget && (
@@ -550,9 +692,12 @@ function ProductDetail({ productId, onBack }: { productId: number; onBack: () =>
       {data.series.length > 0 && (
         <Card className="p-5">
           <h2 className="text-white font-semibold mb-4">Evolución del valor</h2>
-          <SeriesChart series={data.series} />
+          <SeriesChart series={data.series} movements={movements} />
         </Card>
       )}
+
+      {/* Top 10 Posiciones, Países y Sectores */}
+      <ProductBreakdowns product={product} />
 
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
@@ -621,6 +766,10 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
   const [ticker, setTicker] = useState(product.ticker || '');
   const [currency, setCurrency] = useState(product.currency);
   const [accountId, setAccountId] = useState<string>(product.account_id ? String(product.account_id) : '');
+  const [color, setColor] = useState(product.color || '#3b82f6');
+  const [countryBreakdown, setCountryBreakdown] = useState(product.country_breakdown || '');
+  const [sectorBreakdown, setSectorBreakdown] = useState(product.sector_breakdown || '');
+  const [topHoldings, setTopHoldings] = useState(product.top_holdings || '');
   const [investmentAccounts, setInvestmentAccounts] = useState<any[]>([]);
   const [priceSource, setPriceSource] = useState(product.price_source || 'yahoo');
   const [altSource, setAltSource] = useState(product.alt_source || '');
@@ -645,6 +794,10 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
         isin: isin || null,
         ticker: ticker || null,
         currency,
+        color: color || null,
+        country_breakdown: countryBreakdown || null,
+        sector_breakdown: sectorBreakdown || null,
+        top_holdings: topHoldings || null,
         price_source: priceSource,
         alt_source: altSource || null,
         alt_symbol: altSymbol || null,
@@ -685,6 +838,18 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
           <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputCls}>
             <option value="EUR">EUR</option><option value="USD">USD</option><option value="GBP">GBP</option>
           </select>
+        </Field>
+        <Field label="Color personalizado">
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-10 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer" />
+        </Field>
+        <Field label="Desglose por País (JSON o líneas 'EEUU: 60%')">
+          <textarea value={countryBreakdown} onChange={(e) => setCountryBreakdown(e.target.value)} rows={2} className={`${inputCls} resize-none font-mono text-xs`} placeholder="EEUU: 60&#10;España: 40" />
+        </Field>
+        <Field label="Desglose por Sector (JSON o líneas 'Tecnología: 35%')">
+          <textarea value={sectorBreakdown} onChange={(e) => setSectorBreakdown(e.target.value)} rows={2} className={`${inputCls} resize-none font-mono text-xs`} placeholder="Tecnología: 35&#10;Finanzas: 20" />
+        </Field>
+        <Field label="Top 10 Posiciones (JSON o líneas 'Apple: 8.5%')">
+          <textarea value={topHoldings} onChange={(e) => setTopHoldings(e.target.value)} rows={3} className={`${inputCls} resize-none font-mono text-xs`} placeholder="Apple Inc: 8.5&#10;Microsoft: 7.2" />
         </Field>
         <Field label="Fuente del precio principal">
           <select value={priceSource} onChange={(e) => setPriceSource(e.target.value)} className={inputCls}>
@@ -1044,10 +1209,308 @@ function MovementBadge({ type }: { type: string }) {
   return <span className={`inline-block px-2 py-0.5 rounded text-xs border ${styles[type] || styles.saldo}`}>{labels[type] || type}</span>;
 }
 
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Cell, CartesianGrid } from 'recharts';
 
-function SeriesChart({ series }: { series: { date: string; value: number }[] }) {
-  const data = series.map((s) => ({ date: s.date, value: s.value }));
+function parseKeyValueText(text: string | null): { name: string; value: number }[] {
+  if (!text || !text.trim()) return [];
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === 'object') {
+      return Object.entries(parsed).map(([k, v]) => ({ name: k, value: Number(v) }));
+    }
+  } catch {}
+
+  const lines = text.split('\n');
+  const res: { name: string; value: number }[] = [];
+  for (const l of lines) {
+    const parts = l.split(/[:;,=]/);
+    if (parts.length >= 2) {
+      const name = parts[0].trim();
+      const valStr = parts[1].replace(/%/g, '').trim();
+      const num = parseFloat(valStr);
+      if (name && !isNaN(num)) res.push({ name, value: num });
+    }
+  }
+  return res;
+}
+
+function ProductBreakdowns({ product }: { product: Product }) {
+  const holdings = parseKeyValueText(product.top_holdings).slice(0, 10);
+  const countries = parseKeyValueText(product.country_breakdown);
+  const sectors = parseKeyValueText(product.sector_breakdown);
+
+  if (holdings.length === 0 && countries.length === 0 && sectors.length === 0) return null;
+
+  return (
+    <div className="space-y-6">
+      {holdings.length > 0 && (
+        <Card className="p-5">
+          <h2 className="text-white font-semibold mb-4">Top 10 Mayores Posiciones</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-slate-400 text-left border-b border-slate-800">
+                <th className="pb-2 font-medium">Posición / Activo</th>
+                <th className="pb-2 font-medium text-right">Peso (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {holdings.map((h, i) => (
+                <tr key={i} className="border-b border-slate-800/50">
+                  <td className="py-2.5 text-slate-200 font-medium">{h.name}</td>
+                  <td className="py-2.5 text-right text-blue-400 font-medium">{formatPercent(h.value, 1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {countries.length > 0 && (
+          <Card className="p-5">
+            <h2 className="text-white font-semibold mb-4">Distribución por País (%)</h2>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={countries} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}%`, 'Peso']} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+
+        {sectors.length > 0 && (
+          <Card className="p-5">
+            <h2 className="text-white font-semibold mb-4">Distribución por Sector (%)</h2>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={sectors} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}%`, 'Peso']} />
+                <Bar dataKey="value" fill="#059669" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+import { AreaChart, Area } from 'recharts';
+
+function InvestmentDashboardCharts({ products, detailMap, allMovements }: { products: Product[]; detailMap: Map<number, any>; allMovements: any[] }) {
+  const [accumulatedMode, setAccumulatedMode] = useState<'eur' | 'pct'>('eur');
+  const [returnPeriod, setReturnPeriod] = useState<'mensual' | 'anual'>('mensual');
+
+  // 1. Gráfico de % por País
+  const countryMap = new Map<string, number>();
+  let totalCountryVal = 0;
+  for (const p of products) {
+    const d = detailMap.get(p.id);
+    const val = d?.value || 0;
+    const countries = parseKeyValueText(p.country_breakdown);
+    if (countries.length > 0) {
+      for (const c of countries) {
+        const itemVal = val * (c.value / 100);
+        countryMap.set(c.name, (countryMap.get(c.name) || 0) + itemVal);
+        totalCountryVal += itemVal;
+      }
+    } else {
+      countryMap.set('Otros / Sin especificar', (countryMap.get('Otros / Sin especificar') || 0) + val);
+      totalCountryVal += val;
+    }
+  }
+  const countryChartData = Array.from(countryMap.entries())
+    .map(([name, val]) => ({ name, value: totalCountryVal > 0 ? (val / totalCountryVal) * 100 : 0 }))
+    .sort((a, b) => b.value - a.value);
+
+  // 2. Gráfico de % por Tipo de Inversión
+  const typeMap = new Map<string, number>();
+  let totalTypeVal = 0;
+  for (const p of products) {
+    const d = detailMap.get(p.id);
+    const val = d?.value || 0;
+    const typeLabel = PRODUCT_TYPES[p.type] || p.type;
+    typeMap.set(typeLabel, (typeMap.get(typeLabel) || 0) + val);
+    totalTypeVal += val;
+  }
+  const typeChartData = Array.from(typeMap.entries())
+    .map(([name, val]) => ({ name, value: totalTypeVal > 0 ? (val / totalTypeVal) * 100 : 0 }))
+    .sort((a, b) => b.value - a.value);
+
+  // 3. Gráfico de Aportaciones mensuales por fondo
+  const monthMap = new Map<string, Record<string, number>>();
+  const relevantMovements = allMovements.filter(m => {
+    const prod = products.find(p => p.id === m.product_id);
+    return prod && (m.type === 'compra' || m.type === 'saldo');
+  });
+
+  for (const m of relevantMovements) {
+    const month = m.date.slice(0, 7);
+    const prod = products.find(p => p.id === m.product_id);
+    if (!prod) continue;
+    if (!monthMap.has(month)) monthMap.set(month, {});
+    const row = monthMap.get(month)!;
+    row[prod.name] = (row[prod.name] || 0) + m.amount_eur;
+  }
+
+  const monthlyContributionsData = Array.from(monthMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, prodsObj]) => ({ month, ...prodsObj }));
+
+  // 4. Rentabilidad (Mensual o Anual)
+  const returnMap = new Map<string, { invested: number; value: number }>();
+  for (const m of relevantMovements) {
+    const key = returnPeriod === 'mensual' ? m.date.slice(0, 7) : m.date.slice(0, 4);
+    const prod = products.find(p => p.id === m.product_id);
+    const d = detailMap.get(m.product_id);
+    const unitPrice = d?.price || (d?.units ? d.value / d.units : 0);
+    const currentVal = m.units ? m.units * unitPrice : m.amount_eur;
+
+    if (!returnMap.has(key)) returnMap.set(key, { invested: 0, value: 0 });
+    const entry = returnMap.get(key)!;
+    entry.invested += m.amount_eur;
+    entry.value += currentVal;
+  }
+
+  const returnBarData = Array.from(returnMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([periodKey, data]) => {
+      const gain = data.value - data.invested;
+      const ret = data.invested > 0 ? (gain / data.invested) * 100 : 0;
+      return { period: periodKey, rentabilidad: ret };
+    });
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico 1: % Invertido en cada País */}
+        <Card className="p-5">
+          <h2 className="text-white font-semibold mb-4">Inversión por País (%)</h2>
+          {countryChartData.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-12">Sin datos de país</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={countryChartData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [formatPercent(Number(v), 1), 'Peso']} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Gráfico 2: % por Tipo de Inversión */}
+        <Card className="p-5">
+          <h2 className="text-white font-semibold mb-4">Inversión por Tipo (%)</h2>
+          {typeChartData.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-12">Sin datos por tipo</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={typeChartData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [formatPercent(Number(v), 1), 'Peso']} />
+                <Bar dataKey="value" fill="#059669" radius={[4, 4, 0, 0]}>
+                  {typeChartData.map((entry: any, i: number) => (
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico 3: Aportaciones mensuales por fondo */}
+        <Card className="p-5">
+          <h2 className="text-white font-semibold mb-4">Aportaciones mensuales por producto</h2>
+          {monthlyContributionsData.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-12">Sin aportaciones</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={monthlyContributionsData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => formatEUR(Number(v))} />
+                {products.map((p, idx) => (
+                  <Bar key={p.id} dataKey={p.name} stackId="a" fill={p.color || CHART_COLORS[idx % CHART_COLORS.length]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Gráfico 4: Rentabilidad (Mensual / Anual) */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-semibold">Rentabilidad histórica</h2>
+            <div className="flex items-center bg-slate-800 rounded border border-slate-700 p-0.5 text-xs">
+              <button
+                onClick={() => setReturnPeriod('mensual')}
+                className={`px-2.5 py-1 rounded ${returnPeriod === 'mensual' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Mensual
+              </button>
+              <button
+                onClick={() => setReturnPeriod('anual')}
+                className={`px-2.5 py-1 rounded ${returnPeriod === 'anual' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Anual
+              </button>
+            </div>
+          </div>
+          {returnBarData.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-12">Sin datos de rentabilidad</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={returnBarData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="period" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [formatPercent(Number(v)), 'Rentabilidad']} />
+                <Bar dataKey="rentabilidad" radius={[4, 4, 0, 0]}>
+                  {returnBarData.map((entry: any, i: number) => (
+                    <Cell key={i} fill={entry.rentabilidad >= 0 ? '#10b981' : '#f43f5e'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function SeriesChart({ series, movements }: { series: { date: string; value: number }[]; movements?: any[] }) {
+  const purchasesSet = new Set((movements || []).filter(m => m.type === 'compra').map(m => m.date));
+  const data = series.map((s) => ({
+    date: s.date,
+    value: s.value,
+    isPurchase: purchasesSet.has(s.date),
+  }));
+
+  const CustomizedDot = (props: any) => {
+    const { cx, cy, payload } = props;
+    if (payload && payload.isPurchase) {
+      return (
+        <circle cx={cx} cy={cy} r={5} fill="#10b981" stroke="#ffffff" strokeWidth={1.5} />
+      );
+    }
+    return null;
+  };
+
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
@@ -1058,7 +1521,7 @@ function SeriesChart({ series }: { series: { date: string; value: number }[] }) 
           labelStyle={{ color: '#94a3b8' }}
           formatter={(v: any) => [formatEUR(Number(v)), 'Valor']}
         />
-        <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={<CustomizedDot />} />
       </LineChart>
     </ResponsiveContainer>
   );

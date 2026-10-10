@@ -262,6 +262,43 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   }
 
   const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
+  const [showAdjustBalance, setShowAdjustBalance] = useState(false);
+  const [targetBalance, setTargetBalance] = useState(balance.toString());
+  const [adjusting, setAdjusting] = useState(false);
+
+  const handleAdjustBalance = async () => {
+    const target = parseFloat(targetBalance);
+    if (isNaN(target)) return;
+    const diff = target - balance;
+    if (diff === 0) { setShowAdjustBalance(false); return; }
+    setAdjusting(true);
+    try {
+      await api.createTransaction({
+        type: 'ajuste',
+        date: new Date().toISOString().slice(0, 10),
+        amount: diff,
+        account_id: accountId,
+        note: `Ajuste de saldo a ${formatEUR(target)}`,
+      });
+      setShowAdjustBalance(false);
+      loadSummary();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (transactions.length === 0) return;
+    const lastTx = transactions[0];
+    try {
+      await api.deleteTransaction(lastTx.id);
+      loadSummary();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   const toggleSelectTx = (id: number) => {
     setSelectedTxIds(prev => {
@@ -317,6 +354,14 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {transactions.length > 0 && (
+            <button onClick={handleUndo} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors" title="Deshacer último movimiento">
+              Deshacer
+            </button>
+          )}
+          <button onClick={() => { setTargetBalance(balance.toString()); setShowAdjustBalance(true); }} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors">
+            Ajustar Saldo
+          </button>
           <button onClick={() => setEditingAccount(true)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors">
             <Edit3 className="w-4 h-4" /> Editar
           </button>
@@ -639,6 +684,15 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         )}
       </Card>
 
+      {showAdjustBalance && (
+        <Modal title="Ajustar saldo de la cuenta" onClose={() => setShowAdjustBalance(false)} onSave={handleAdjustBalance} saving={adjusting} error="">
+          <p className="text-slate-300 text-sm mb-2">Saldo actual: <span className="font-bold text-white">{formatEUR(balance)}</span></p>
+          <Field label="Saldo objetivo (€)">
+            <input type="number" step="any" value={targetBalance} onChange={(e) => setTargetBalance(e.target.value)} className={inputCls} autoFocus />
+          </Field>
+          <p className="text-slate-400 text-xs mt-1">Se creará un movimiento especial de ajuste que no afectará a las estadísticas globales.</p>
+        </Modal>
+      )}
       {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
       {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
       {editingAccount && <EditAccountModal account={account} onClose={() => { setEditingAccount(false); loadSummary(); }} />}
