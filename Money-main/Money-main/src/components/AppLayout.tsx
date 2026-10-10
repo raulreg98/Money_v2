@@ -96,14 +96,18 @@ function SidebarContent({
   const normalizeType = (t?: string) =>
     (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-  const normalTypes = ['corriente', 'efectivo', 'ahorro', 'tarjeta'];
   const inversionAccounts = accounts.filter(a => normalizeType(a.type) === 'inversion');
   const corrienteAccounts = accounts.filter(a => normalizeType(a.type) !== 'inversion');
 
   const getAccountBalance = (acc: any) => {
+    if (acc.total_balance !== undefined) return acc.total_balance;
     const txs = transactions.filter((t: any) => t.account_id === acc.id);
     return acc.initial_balance + txs.reduce((s: number, t: any) => s + t.amount, 0);
   };
+
+  const corrienteTotal = corrienteAccounts.reduce((sum, a) => sum + getAccountBalance(a), 0);
+  const inversionTotal = inversionAccounts.reduce((sum, a) => sum + getAccountBalance(a), 0);
+  const grandTotal = corrienteTotal + inversionTotal;
 
   const handleOpenNewTx = () => {
     Promise.all([api.getAccounts(), api.getCategories()])
@@ -183,9 +187,19 @@ function SidebarContent({
 
           {accountsOpen && (
             <div className="pl-6 pr-1 py-1.5 space-y-2">
+              {accounts.length > 0 && (
+                <div className="px-2 py-1 bg-slate-800/40 rounded flex items-center justify-between text-xs font-semibold text-slate-300 border border-slate-800">
+                  <span>Total Cuentas</span>
+                  <span className="text-blue-400">{formatEUR(grandTotal)}</span>
+                </div>
+              )}
+
               {corrienteAccounts.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2">Cuentas Corrientes</span>
+                  <div className="flex items-center justify-between px-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
+                    <span>Cuentas Corrientes</span>
+                    <span className="text-slate-400 font-medium">{formatEUR(corrienteTotal)}</span>
+                  </div>
                   {corrienteAccounts.map(a => (
                     <button
                       key={a.id}
@@ -201,7 +215,10 @@ function SidebarContent({
 
               {inversionAccounts.length > 0 && (
                 <div className="space-y-1 pt-1 border-t border-slate-800/50">
-                  <span className="text-[10px] font-semibold tracking-wider text-slate-500 uppercase px-2">Cuentas de Inversión</span>
+                  <div className="flex items-center justify-between px-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
+                    <span>Cuentas de Inversión</span>
+                    <span className="text-slate-400 font-medium">{formatEUR(inversionTotal)}</span>
+                  </div>
                   {inversionAccounts.map(a => (
                     <button
                       key={a.id}

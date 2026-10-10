@@ -31,6 +31,8 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
   const [updatingPrices, setUpdatingPrices] = useState(false);
   const [priceMessage, setPriceMessage] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [movSortField, setMovSortField] = useState<string>('date');
+  const [movSortAsc, setMovSortAsc] = useState<boolean>(false);
 
   const loadData = () => {
     Promise.all([api.getProducts(), api.getPortfolioSummary(), api.getAccounts()])
@@ -124,7 +126,11 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
     else { setSortField(field); setSortAsc(false); }
   };
 
-  // Investment movements history
+  const handleMovSort = (field: string) => {
+    if (movSortField === field) setMovSortAsc(!movSortAsc);
+    else { setMovSortField(field); setMovSortAsc(false); }
+  };
+
   const filteredMovements = allMovements
     .filter(m => {
       const prod = products.find(p => p.id === m.product_id);
@@ -133,7 +139,35 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
       if (txFilterProduct && prod.id !== parseInt(txFilterProduct)) return false;
       return m.type === 'compra' || m.type === 'saldo';
     })
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => {
+      const prodA = products.find(p => p.id === a.product_id);
+      const prodB = products.find(p => p.id === b.product_id);
+      const dA = detailMap.get(a.product_id);
+      const dB = detailMap.get(b.product_id);
+      const unitPriceA = dA?.price || (dA?.units ? dA.value / dA.units : 0);
+      const unitPriceB = dB?.price || (dB?.units ? dB.value / dB.units : 0);
+      const valA = a.units ? a.units * unitPriceA : a.amount_eur;
+      const valB = b.units ? b.units * unitPriceB : b.amount_eur;
+      const gainA = valA - a.amount_eur;
+      const gainB = valB - b.amount_eur;
+      const retA = a.amount_eur > 0 ? (gainA / a.amount_eur) * 100 : 0;
+      const retB = b.amount_eur > 0 ? (gainB / b.amount_eur) * 100 : 0;
+
+      let vA: any = 0;
+      let vB: any = 0;
+
+      if (movSortField === 'date') { vA = a.date; vB = b.date; }
+      else if (movSortField === 'product') { vA = prodA?.name || ''; vB = prodB?.name || ''; }
+      else if (movSortField === 'amount') { vA = a.amount_eur; vB = b.amount_eur; }
+      else if (movSortField === 'value') { vA = valA; vB = valB; }
+      else if (movSortField === 'gain') { vA = gainA; vB = gainB; }
+      else if (movSortField === 'ret') { vA = retA; vB = retB; }
+
+      if (typeof vA === 'string') {
+        return movSortAsc ? vA.localeCompare(vB) : vB.localeCompare(vA);
+      }
+      return movSortAsc ? vA - vB : vB - vA;
+    });
 
   return (
     <div className="space-y-6">
@@ -181,15 +215,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
 
       {products.length > 0 && <ProductEvolutionChart products={products.map(p => ({ id: p.id, name: p.name, color: p.color }))} />}
 
-      {/* 5 Nuevos Gráficos de Inversiones */}
-      {products.length > 0 && (
-        <InvestmentDashboardCharts
-          products={filteredProducts}
-          detailMap={detailMap}
-          allMovements={allMovements}
-        />
-      )}
-
+      {/* Tabla de Productos de Inversión (situada por encima de los 4 gráficos inferiores) */}
       {products.length === 0 ? (
         <Card className="p-12 text-center">
           <p className="text-slate-500">No tienes productos aún. Añade tu primera inversión.</p>
@@ -256,6 +282,15 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         </Card>
       )}
 
+      {/* 5 Nuevos Gráficos de Inversiones */}
+      {products.length > 0 && (
+        <InvestmentDashboardCharts
+          products={filteredProducts}
+          detailMap={detailMap}
+          allMovements={allMovements}
+        />
+      )}
+
       {/* Histórico de Movimientos de Inversión */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
@@ -277,13 +312,13 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-slate-400 text-left border-b border-slate-800">
-                <th className="px-5 py-2 font-medium">Fecha</th>
-                <th className="px-5 py-2 font-medium">Producto</th>
-                <th className="px-5 py-2 font-medium text-right">Dinero aportado (€)</th>
-                <th className="px-5 py-2 font-medium text-right">Valor actual (€)</th>
-                <th className="px-5 py-2 font-medium text-right">Ganancia (€)</th>
-                <th className="px-5 py-2 font-medium text-right">Rentabilidad (%)</th>
+              <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
+                <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('date')}>Fecha {movSortField === 'date' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('product')}>Producto {movSortField === 'product' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('amount')}>Dinero aportado (€) {movSortField === 'amount' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('value')}>Valor actual (€) {movSortField === 'value' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('gain')}>Ganancia (€) {movSortField === 'gain' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('ret')}>Rentabilidad (%) {movSortField === 'ret' ? (movSortAsc ? '▲' : '▼') : ''}</th>
               </tr>
             </thead>
             <tbody>
@@ -1304,6 +1339,12 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
   const [accumulatedMode, setAccumulatedMode] = useState<'eur' | 'pct'>('eur');
   const [returnPeriod, setReturnPeriod] = useState<'mensual' | 'anual'>('mensual');
 
+  // Filtros temporales para gráficos de aportaciones y rentabilidad
+  const [contribFrom, setContribFrom] = useState('');
+  const [contribTo, setContribTo] = useState('');
+  const [returnFrom, setReturnFrom] = useState('');
+  const [returnTo, setReturnTo] = useState('');
+
   // 1. Gráfico de % por País
   const countryMap = new Map<string, number>();
   let totalCountryVal = 0;
@@ -1347,7 +1388,13 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
     return prod && (m.type === 'compra' || m.type === 'saldo');
   });
 
-  for (const m of relevantMovements) {
+  const contribMovements = relevantMovements.filter(m => {
+    if (contribFrom && m.date < contribFrom) return false;
+    if (contribTo && m.date > contribTo) return false;
+    return true;
+  });
+
+  for (const m of contribMovements) {
     const month = m.date.slice(0, 7);
     const prod = products.find(p => p.id === m.product_id);
     if (!prod) continue;
@@ -1361,8 +1408,14 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
     .map(([month, prodsObj]) => ({ month, ...prodsObj }));
 
   // 4. Rentabilidad (Mensual o Anual)
+  const returnMovements = relevantMovements.filter(m => {
+    if (returnFrom && m.date < returnFrom) return false;
+    if (returnTo && m.date > returnTo) return false;
+    return true;
+  });
+
   const returnMap = new Map<string, { invested: number; value: number }>();
-  for (const m of relevantMovements) {
+  for (const m of returnMovements) {
     const key = returnPeriod === 'mensual' ? m.date.slice(0, 7) : m.date.slice(0, 4);
     const prod = products.find(p => p.id === m.product_id);
     const d = detailMap.get(m.product_id);
@@ -1430,7 +1483,14 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico 3: Aportaciones mensuales por fondo */}
         <Card className="p-5">
-          <h2 className="text-white font-semibold mb-4">Aportaciones mensuales por producto</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+            <h2 className="text-white font-semibold">Aportaciones mensuales por producto</h2>
+            <div className="flex items-center gap-1.5 text-xs">
+              <input type="month" value={contribFrom ? contribFrom.slice(0, 7) : ''} onChange={(e) => setContribFrom(e.target.value ? `${e.target.value}-01` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+              <span className="text-slate-500">→</span>
+              <input type="month" value={contribTo ? contribTo.slice(0, 7) : ''} onChange={(e) => setContribTo(e.target.value ? `${e.target.value}-31` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+            </div>
+          </div>
           {monthlyContributionsData.length === 0 ? (
             <p className="text-slate-500 text-sm text-center py-12">Sin aportaciones</p>
           ) : (
@@ -1439,7 +1499,7 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => formatEUR(Number(v))} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
                 {products.map((p, idx) => (
                   <Bar key={p.id} dataKey={p.name} stackId="a" fill={p.color || CHART_COLORS[idx % CHART_COLORS.length]} />
                 ))}
@@ -1450,21 +1510,28 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
 
         {/* Gráfico 4: Rentabilidad (Mensual / Anual) */}
         <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
             <h2 className="text-white font-semibold">Rentabilidad histórica</h2>
-            <div className="flex items-center bg-slate-800 rounded border border-slate-700 p-0.5 text-xs">
-              <button
-                onClick={() => setReturnPeriod('mensual')}
-                className={`px-2.5 py-1 rounded ${returnPeriod === 'mensual' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Mensual
-              </button>
-              <button
-                onClick={() => setReturnPeriod('anual')}
-                className={`px-2.5 py-1 rounded ${returnPeriod === 'anual' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              >
-                Anual
-              </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs">
+                <input type="month" value={returnFrom ? returnFrom.slice(0, 7) : ''} onChange={(e) => setReturnFrom(e.target.value ? `${e.target.value}-01` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+                <span className="text-slate-500">→</span>
+                <input type="month" value={returnTo ? returnTo.slice(0, 7) : ''} onChange={(e) => setReturnTo(e.target.value ? `${e.target.value}-31` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+              </div>
+              <div className="flex items-center bg-slate-800 rounded border border-slate-700 p-0.5 text-xs">
+                <button
+                  onClick={() => setReturnPeriod('mensual')}
+                  className={`px-2 py-0.5 rounded ${returnPeriod === 'mensual' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Mensual
+                </button>
+                <button
+                  onClick={() => setReturnPeriod('anual')}
+                  className={`px-2 py-0.5 rounded ${returnPeriod === 'anual' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Anual
+                </button>
+              </div>
             </div>
           </div>
           {returnBarData.length === 0 ? (
@@ -1475,7 +1542,7 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="period" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [formatPercent(Number(v)), 'Rentabilidad']} />
+                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => [formatPercent(Number(v)), 'Rentabilidad']} />
                 <Bar dataKey="rentabilidad" radius={[4, 4, 0, 0]}>
                   {returnBarData.map((entry: any, i: number) => (
                     <Cell key={i} fill={entry.rentabilidad >= 0 ? '#10b981' : '#f43f5e'} />

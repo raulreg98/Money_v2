@@ -476,127 +476,108 @@ function WidgetWizard({ accounts, categories, editWidget, onClose }: {
 
 function PreviewChart({ config, data, categories }: { config: WizardConfig; data: any; categories: Category[] }) {
   const chartType = config.chart_type;
+  const d = data.data || [];
+  if (!d || d.length === 0) return <p className="text-slate-500 text-sm text-center py-12">Sin datos</p>;
+
   const catColors = (name: string) => categories.find(c => c.name === name)?.color || CHART_COLORS[0];
 
-  if (data.type === 'category' || (chartType === 'pie' && data.data)) {
-    const d = data.data || [];
-    if (d.length === 0) return <p className="text-slate-500 text-sm text-center py-12">Sin datos</p>;
+  // DONUT / PIE
+  if (chartType === 'pie') {
     return (
       <ResponsiveContainer width="100%" height={280}>
         <PieChart>
-          <Pie data={d} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} label={config.show_values ? (e: any) => `${e.name}: ${formatEUR(e.value, { compact: true })}` : false}>
-            {d.map((entry: any, i: number) => <Cell key={i} fill={entry.color || catColors(entry.name) || CHART_COLORS[i % CHART_COLORS.length]} />)}
+          <Pie
+            data={d}
+            dataKey={data.type === 'category' ? 'value' : 'value' in d[0] ? 'value' : 'gastos'}
+            nameKey={data.type === 'category' ? 'name' : 'label'}
+            cx="50%" cy="50%" outerRadius={90} innerRadius={45}
+            label={config.show_values ? (e: any) => `${e.name || e.label}: ${formatEUR(e.value || e.gastos || 0, { compact: true })}` : false}
+          >
+            {d.map((entry: any, i: number) => (
+              <Cell key={i} fill={entry.color || catColors(entry.name || entry.label) || CHART_COLORS[i % CHART_COLORS.length]} />
+            ))}
           </Pie>
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
           {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
         </PieChart>
       </ResponsiveContainer>
     );
   }
 
-  if (data.type === 'neto') {
-    const d = data.data || [];
-    if (chartType === 'stacked_bar') {
-      return (
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-            {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
-            <Bar dataKey="ingresos" name="Ingresos" stackId="a" fill="#059669" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="gastos" name="Gastos" stackId="a" fill="#dc2626" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      );
-    }
-    return (
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-          <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
-          <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-          {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
-          <Bar dataKey="ingresos" name="Ingresos" fill="#059669" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="gastos" name="Gastos" fill="#dc2626" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  if (data.type === 'saldo') {
-    const d = data.data || [];
-    if (chartType === 'area') {
-      return (
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-            <Area type="monotone" dataKey="value" name="Saldo" stroke="#3b82f6" fill="#3b82f633" strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
-      );
-    }
+  // LINE
+  if (chartType === 'line') {
+    const xKey = data.type === 'category' ? 'name' : 'label';
+    const valKey = data.type === 'category' ? 'value' : 'value' in d[0] ? 'value' : 'neto' in d[0] ? 'neto' : 'gastos';
     return (
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-          <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
+          <XAxis dataKey={xKey} tick={{ fill: '#64748b', fontSize: 11 }} />
           <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-          <Line type="monotone" dataKey="value" name="Saldo" stroke="#3b82f6" strokeWidth={2} dot={false} />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
+          {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+          <Line type="monotone" dataKey={valKey} name={config.name || 'Valor'} stroke="#3b82f6" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     );
   }
 
-  // Default: series (gastos/ingresos by time)
-  {
-    const d = data.data || [];
-    if (d.length === 0) return <p className="text-slate-500 text-sm text-center py-12">Sin datos</p>;
-    const color = config.metric === 'gastos' ? '#dc2626' : '#059669';
-    if (chartType === 'area') {
-      return (
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-            <Area type="monotone" dataKey="value" name={config.metric === 'gastos' ? 'Gastos' : 'Ingresos'} stroke={color} fill={`${color}33`} strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
-      );
-    }
-    if (chartType === 'line') {
-      return (
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-            <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-            <Line type="monotone" dataKey="value" name={config.metric === 'gastos' ? 'Gastos' : 'Ingresos'} stroke={color} strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      );
-    }
+  // AREA
+  if (chartType === 'area') {
+    const xKey = data.type === 'category' ? 'name' : 'label';
+    const valKey = data.type === 'category' ? 'value' : 'value' in d[0] ? 'value' : 'neto' in d[0] ? 'neto' : 'gastos';
+    return (
+      <ResponsiveContainer width="100%" height={280}>
+        <AreaChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+          <XAxis dataKey={xKey} tick={{ fill: '#64748b', fontSize: 11 }} />
+          <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
+          {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+          <Area type="monotone" dataKey={valKey} name={config.name || 'Valor'} stroke="#3b82f6" fill="#3b82f633" strokeWidth={2} />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  // BARRAS STACKED / BARRAS
+  const xKey = data.type === 'category' ? 'name' : 'label';
+
+  if (data.type === 'neto') {
     return (
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
           <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-          <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatEUR(Number(v))} />
-          <Bar dataKey="value" name={config.metric === 'gastos' ? 'Gastos' : 'Ingresos'} fill={color} radius={[4, 4, 0, 0]} />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
+          {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+          <Bar dataKey="ingresos" name="Ingresos" stackId={chartType === 'stacked_bar' ? 'a' : undefined} fill="#059669" radius={chartType === 'stacked_bar' ? [0, 0, 0, 0] : [4, 4, 0, 0]} />
+          <Bar dataKey="gastos" name="Gastos" stackId={chartType === 'stacked_bar' ? 'a' : undefined} fill="#dc2626" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     );
   }
+
+  const valKey = data.type === 'category' ? 'value' : 'value' in d[0] ? 'value' : 'gastos';
+  const color = config.metric === 'gastos' ? '#dc2626' : '#3b82f6';
+
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={d} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+        <XAxis dataKey={xKey} tick={{ fill: '#64748b', fontSize: 11 }} />
+        <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
+        <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
+        {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+        <Bar dataKey={valKey} name={config.name || 'Valor'} fill={color} radius={[4, 4, 0, 0]}>
+          {data.type === 'category' && d.map((entry: any, i: number) => (
+            <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
 }
 
 // ===================== WIDGET CHART (displayed in grid) =====================
@@ -606,6 +587,7 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState(widget.period);
+  const [accountFilter, setAccountFilter] = useState(widget.account_filter || '');
 
   useEffect(() => {
     setLoading(true);
@@ -615,7 +597,7 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
       period,
       custom_from: widget.custom_from,
       custom_to: widget.custom_to,
-      account_filter: widget.account_filter,
+      account_filter: accountFilter || null,
       category_filter: null,
       chart_type: widget.chart_type,
       top_n: null,
@@ -623,33 +605,37 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
       .then(setData)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [widget.id, widget.metric, widget.group_by, period, widget.custom_from, widget.custom_to, widget.account_filter, widget.chart_type]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48">
-        <div className="w-6 h-6 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
-      </div>
-    );
-  }
-  if (error) return <p className="text-red-400 text-sm text-center py-8">{error}</p>;
-  if (!data || (data.data && data.data.length === 0)) return <p className="text-slate-500 text-sm text-center py-8">Sin datos</p>;
+  }, [widget.id, widget.metric, widget.group_by, period, widget.custom_from, widget.custom_to, accountFilter, widget.chart_type]);
 
   const config: WizardConfig = {
     name: widget.name, chart_type: widget.chart_type, metric: widget.metric,
     group_by: widget.group_by, period, custom_from: widget.custom_from || '',
-    custom_to: widget.custom_to || '', account_filter: widget.account_filter || '',
+    custom_to: widget.custom_to || '', account_filter: accountFilter,
     category_filter: '', top_n: 0, show_legend: true, show_values: false,
   };
 
   return (
     <div>
-      <div className="flex justify-end mb-2">
+      <div className="flex items-center justify-end gap-2 mb-2">
+        <select value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)} className="bg-slate-800 text-slate-400 text-xs rounded-lg px-2 py-1 border border-slate-700 outline-none">
+          <option value="">Todas las cuentas</option>
+          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
         <select value={period} onChange={(e) => setPeriod(e.target.value)} className="bg-slate-800 text-slate-400 text-xs rounded-lg px-2 py-1 border border-slate-700 outline-none">
           {PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
       </div>
-      <PreviewChart config={config} data={data} categories={categories} />
+      {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="w-6 h-6 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
+        </div>
+      ) : error ? (
+        <p className="text-red-400 text-sm text-center py-8">{error}</p>
+      ) : !data || (data.data && data.data.length === 0) ? (
+        <p className="text-slate-500 text-sm text-center py-8">Sin datos</p>
+      ) : (
+        <PreviewChart config={config} data={data} categories={categories} />
+      )}
     </div>
   );
 }

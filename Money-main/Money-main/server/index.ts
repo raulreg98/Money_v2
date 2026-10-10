@@ -243,7 +243,52 @@ async function main() {
 
   // === Cuentas ===
   app.get('/api/accounts', async (_req, res) => {
-    res.json(await accountRepo.getAllAccountsWithArchived());
+    const accounts = await accountRepo.getAllAccountsWithArchived();
+    const allTx = await transactionRepo.getAllTransactions();
+    const products = await productRepo.getAllProductsWithArchived();
+    const allMovements = await movementRepo.getAllMovements();
+    const latestPrices = await priceRepo.getAllLatestPrices();
+    const latestValuations = await priceRepo.getAllLatestValuations();
+
+    const result = accounts.map(acc => {
+      const txs = allTx.filter(t => t.account_id === acc.id);
+      const cash_balance = acc.initial_balance + txs.reduce((s, t) => s + t.amount, 0);
+
+      let invested_value = 0;
+      if (acc.type === 'inversion') {
+        const portfolioNames = new Set(
+          allMovements.filter(m => m.portfolio === acc.name).map(m => m.product_id)
+        );
+        for (const product of products) {
+          if (product.archived) continue;
+          const isLinkedByAccountId = product.account_id === acc.id;
+          const isLinkedByPortfolio = !product.account_id && portfolioNames.has(product.id);
+          if (!isLinkedByAccountId && !isLinkedByPortfolio) continue;
+
+          const movements = allMovements.filter(m => m.product_id === product.id);
+          const fifo = computeFifo(movements as any);
+          const latestPrice = latestPrices.get(product.id);
+          const latestValuation = latestValuations.get(product.id);
+          const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
+          let value = 0;
+          if (isPriced) {
+            value = latestPrice ? fifo.remainingUnits * latestPrice.price : 0;
+          } else {
+            value = latestValuation ? latestValuation.value_eur : 0;
+          }
+          invested_value += value;
+        }
+      }
+
+      return {
+        ...acc,
+        cash_balance,
+        invested_value,
+        total_balance: cash_balance + invested_value,
+      };
+    });
+
+    res.json(result);
   });
 
   const accountSchema = z.object({
