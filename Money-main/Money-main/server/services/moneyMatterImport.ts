@@ -266,16 +266,25 @@ export function parseMoneyMatterZip(zipBuffer: Buffer): ImportPreview {
 
   const portfolioName = (id: string) => portfolios.find(p => p.id === id)?.name || id;
 
-  // Parse accounts
+  // Parse accounts.
+  // Note: If transactions exist for the account, initial balance from MoneyMatter is set to 0 to prevent double-counting
+  // initial balance on top of the imported transaction stream.
+  const accountHasTxs = new Set(transactionsJson.map(t => t.accountId));
+
   const parsedAccounts: ParsedAccount[] = accountsJson.map((a) => {
     let type = 'corriente';
     if (a.accountCategory === 'cash') type = 'efectivo';
     else if (a.accountCategory === 'investment') type = 'inversión';
+
+    // Avoid double counting initial balance when full transaction history is imported
+    const hasTxs = accountHasTxs.has(a.id);
+    const initialBalance = hasTxs ? 0 : a.initialBalance / 100;
+
     return {
       externalId: a.id,
       name: a.name,
       currency: a.currencyCode || 'EUR',
-      initialBalance: a.initialBalance / 100,
+      initialBalance,
       currentBalance: a.currentBalance / 100,
       archived: a.status === 'archived',
       type,
@@ -519,18 +528,23 @@ export function parseMoneyMatterZip(zipBuffer: Buffer): ImportPreview {
     updateDateRange(date);
   }
 
-  // Parse cash products from portfolio balances
+  // Parse cash products from portfolio balances only if there are no transfers into investment accounts
+  // that already account for cash to prevent duplicate net worth inflation.
   const exportedAt = manifest?.exportedAt ? dateOnly(manifest.exportedAt) : today;
   const parsedCashProducts: ParsedCashProduct[] = [];
-  for (const pb of portfolioBalances) {
-    if (pb.totalCash > 0.5) {
-      const name = `Efectivo en ${portfolioName(pb.portfolioId)}`;
-      parsedCashProducts.push({
-        name,
-        amount: pb.totalCash,
-        date: exportedAt,
-        portfolio: portfolioName(pb.portfolioId),
-      });
+  const hasPfTransfers = portfolioTransfers.length > 0;
+
+  if (!hasPfTransfers) {
+    for (const pb of portfolioBalances) {
+      if (pb.totalCash > 0.5) {
+        const name = `Efectivo en ${portfolioName(pb.portfolioId)}`;
+        parsedCashProducts.push({
+          name,
+          amount: pb.totalCash,
+          date: exportedAt,
+          portfolio: portfolioName(pb.portfolioId),
+        });
+      }
     }
   }
 
