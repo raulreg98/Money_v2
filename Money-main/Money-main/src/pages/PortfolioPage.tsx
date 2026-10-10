@@ -17,6 +17,7 @@ export function PortfolioPage() {
 
 function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [summary, setSummary] = useState<{ productDetails: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,10 +27,11 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
   const loadData = () => {
-    Promise.all([api.getProducts(), api.getPortfolioSummary()])
-      .then(([prods, summ]) => {
+    Promise.all([api.getProducts(), api.getPortfolioSummary(), api.getAccounts()])
+      .then(([prods, summ, accs]) => {
         setProducts(prods);
         setSummary(summ);
+        setAccounts(accs);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -104,6 +106,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
               <tr className="text-slate-400 text-left border-b border-slate-800">
                 <th className="px-5 py-3 font-medium">Nombre</th>
                 <th className="px-5 py-3 font-medium">Tipo</th>
+                <th className="px-5 py-3 font-medium">Cuenta</th>
                 <th className="px-5 py-3 font-medium text-right">Valor</th>
                 <th className="px-5 py-3 font-medium text-right">Invertido</th>
                 <th className="px-5 py-3 font-medium text-right">G/P</th>
@@ -131,6 +134,9 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
                   >
                     <td className="px-5 py-3 text-white font-medium">{p.name}</td>
                     <td className="px-5 py-3 text-slate-400">{PRODUCT_TYPES[p.type] || p.type}</td>
+                    <td className="px-5 py-3 text-slate-400">
+                      {accounts.find(a => a.id === p.account_id)?.name || '—'}
+                    </td>
                     <td className="px-5 py-3 text-right text-slate-200">
                       {formatEUR(value)}
                       {estimated && <span className="ml-1 text-amber-500 text-xs">est.</span>}
@@ -270,6 +276,8 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
   const [isin, setIsin] = useState('');
   const [ticker, setTicker] = useState('');
   const [currency, setCurrency] = useState('EUR');
+  const [accountId, setAccountId] = useState<string>('');
+  const [investmentAccounts, setInvestmentAccounts] = useState<any[]>([]);
   const [priceSource, setPriceSource] = useState('yahoo');
   const [altSource, setAltSource] = useState('');
   const [altSymbol, setAltSymbol] = useState('');
@@ -279,6 +287,14 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
   const [saving, setSaving] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    api.getAccounts().then(accs => {
+      const inv = accs.filter((a: any) => !a.archived && a.type === 'inversion');
+      setInvestmentAccounts(inv);
+      if (inv.length > 0) setAccountId(String(inv[0].id));
+    }).catch(() => {});
+  }, []);
 
   const doSearch = async (q: string) => {
     if (q.length < 2) { setSearchResults([]); return; }
@@ -313,6 +329,7 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
         alt_source: altSource || null,
         alt_symbol: altSymbol || null,
         long_term: longTerm ? 1 : 0,
+        account_id: accountId ? parseInt(accountId) : null,
       });
       // Try to download price history right away
       api.downloadHistory(id).catch(() => {});
@@ -357,6 +374,14 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
         <Field label="Tipo">
           <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
             {Object.entries(PRODUCT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Cuenta de Inversión">
+          <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputCls}>
+            <option value="">Sin cuenta vinculada</option>
+            {investmentAccounts.map(acc => (
+              <option key={acc.id} value={acc.id}>{acc.name}</option>
+            ))}
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
@@ -500,6 +525,10 @@ function ProductDetail({ productId, onBack }: { productId: number; onBack: () =>
             <span>Hace {priceAgeDays} días sin actualizar</span>
           </div>
         )}
+        <div className="flex items-center gap-2 border-l border-slate-700 pl-4 my-1">
+          <span className="text-slate-400 text-xs">Cuenta vinculada:</span>
+          <AccountQuickSelect product={product} onDone={reload} />
+        </div>
         <div className="flex-1" />
         <PriceActions productId={productId} onDone={reload} />
       </Card>
@@ -591,12 +620,21 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
   const [isin, setIsin] = useState(product.isin || '');
   const [ticker, setTicker] = useState(product.ticker || '');
   const [currency, setCurrency] = useState(product.currency);
+  const [accountId, setAccountId] = useState<string>(product.account_id ? String(product.account_id) : '');
+  const [investmentAccounts, setInvestmentAccounts] = useState<any[]>([]);
   const [priceSource, setPriceSource] = useState(product.price_source || 'yahoo');
   const [altSource, setAltSource] = useState(product.alt_source || '');
   const [altSymbol, setAltSymbol] = useState(product.alt_symbol || '');
   const [longTerm, setLongTerm] = useState(product.long_term === 1);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.getAccounts().then(accs => {
+      const inv = accs.filter((a: any) => !a.archived && a.type === 'inversion');
+      setInvestmentAccounts(inv);
+    }).catch(() => {});
+  }, []);
 
   const save = async () => {
     if (!name) { setError('El nombre es obligatorio'); return; }
@@ -611,6 +649,7 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
         alt_source: altSource || null,
         alt_symbol: altSymbol || null,
         long_term: longTerm ? 1 : 0,
+        account_id: accountId ? parseInt(accountId) : null,
       });
       onClose();
     } catch (err: any) {
@@ -628,6 +667,14 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
         <Field label="Tipo">
           <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
             {Object.entries(PRODUCT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Cuenta de Inversión">
+          <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputCls}>
+            <option value="">Sin cuenta vinculada</option>
+            {investmentAccounts.map(acc => (
+              <option key={acc.id} value={acc.id}>{acc.name}</option>
+            ))}
           </select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
@@ -664,6 +711,45 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
         </div>
       </div>
     </div>
+  );
+}
+
+function AccountQuickSelect({ product, onDone }: { product: Product; onDone: () => void }) {
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.getAccounts().then(accs => {
+      const inv = accs.filter((a: any) => !a.archived && a.type === 'inversion');
+      setAccounts(inv);
+    }).catch(() => {});
+  }, []);
+
+  const onChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    const account_id = val ? parseInt(val) : null;
+    setSaving(true);
+    try {
+      await api.updateProduct(product.id, { account_id });
+      onDone();
+    } catch {
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <select
+      value={product.account_id ? String(product.account_id) : ''}
+      onChange={onChange}
+      disabled={saving}
+      className="bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 outline-none focus:border-blue-500"
+    >
+      <option value="">Sin cuenta</option>
+      {accounts.map(a => (
+        <option key={a.id} value={a.id}>{a.name}</option>
+      ))}
+    </select>
   );
 }
 

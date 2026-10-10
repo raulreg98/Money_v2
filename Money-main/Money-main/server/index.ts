@@ -77,6 +77,7 @@ async function main() {
     risk: z.number().nullable().optional(), category: z.string().nullable().optional(),
     manual_price: z.number().optional(), long_term: z.number().optional(),
     alt_source: z.string().nullable().optional(), alt_symbol: z.string().nullable().optional(),
+    account_id: z.number().nullable().optional(),
   });
 
   app.post('/api/products', async (req, res) => {
@@ -120,6 +121,21 @@ async function main() {
     const parsed = movementSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.issues });
     const id = await movementRepo.createMovement(parsed.data as any);
+
+    // Si es un movimiento de compra y el producto tiene una cuenta vinculada, crear transacción de gasto automáticamente
+    if (parsed.data.type === 'compra' && parsed.data.amount_eur > 0) {
+      const product = await productRepo.getProductById(parsed.data.product_id);
+      if (product && product.account_id) {
+        await transactionRepo.createTransaction({
+          type: 'gasto',
+          date: parsed.data.date,
+          amount: -Math.abs(parsed.data.amount_eur),
+          account_id: product.account_id,
+          note: `Compra de producto: ${product.name}`,
+        } as any);
+      }
+    }
+
     res.json({ id });
   });
 
@@ -355,8 +371,9 @@ async function main() {
     }).sort((a, b) => b.value - a.value);
     const gastosPorTag = Array.from(tagMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-    // Productos de inversión (si hay movimientos con mismo nombre de cartera)
+    // Productos de inversión (vinculados por account_id o nombre de cartera)
     let investmentProducts: any[] = [];
+    let investedValue = 0;
     if (account.type === 'inversion') {
       const allMovements = await movementRepo.getAllMovements();
       const products = await productRepo.getAllProductsWithArchived();
@@ -364,16 +381,26 @@ async function main() {
         allMovements.filter(m => m.portfolio === account.name).map(m => m.product_id)
       );
       const latestPrices = await priceRepo.getAllLatestPrices();
+      const latestValuations = await priceRepo.getAllLatestValuations();
+
       for (const product of products) {
         if (product.archived) continue;
-        if (!portfolioNames.has(product.id)) continue;
+        const isLinkedByAccountId = product.account_id === account.id;
+        const isLinkedByPortfolio = !product.account_id && portfolioNames.has(product.id);
+        if (!isLinkedByAccountId && !isLinkedByPortfolio) continue;
+
         const movements = allMovements.filter(m => m.product_id === product.id);
         const fifo = computeFifo(movements as any);
         const latestPrice = latestPrices.get(product.id);
+        const latestValuation = latestValuations.get(product.id);
         const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
-        const value = isPriced
-          ? (latestPrice ? fifo.remainingUnits * latestPrice.price : 0)
-          : 0;
+        let value = 0;
+        if (isPriced) {
+          value = latestPrice ? fifo.remainingUnits * latestPrice.price : 0;
+        } else {
+          value = latestValuation ? latestValuation.value_eur : 0;
+        }
+        investedValue += value;
         investmentProducts.push({
           id: product.id, name: product.name, type: product.type,
           value, invested: fifo.totalCost, units: fifo.remainingUnits,
@@ -384,6 +411,8 @@ async function main() {
     res.json({
       account,
       balance,
+      investedValue,
+      totalBalance: balance + investedValue,
       transactions: pagedTx,
       totalCount: filtered.length,
       accounts: allAccounts.map(a => ({ id: a.id, name: a.name })),
@@ -414,18 +443,24 @@ async function main() {
   app.post('/api/transactions', async (req, res) => {
     const parsed = txSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.issues });
-    const data = parsed.data;
+    const data = { ...parsed.data };
+
+    if (data.type === 'gasto') {
+      data.amount = -Math.abs(data.amount);
+    } else if (data.type === 'ingreso') {
+      data.amount = Math.abs(data.amount);
+    }
 
     if (data.type === 'transferencia') {
       if (!data.to_account_id) return res.status(400).json({ error: 'Falta la cuenta destino' });
       const fromId = await transactionRepo.createTransaction({
-        type: 'transferencia', date: data.date, amount: -data.amount,
+        type: 'transferencia', date: data.date, amount: -Math.abs(data.amount),
         account_id: data.account_id, to_account_id: data.to_account_id,
         to_amount: data.to_amount, note: data.note, tags: data.tags,
         category_id: data.category_id,
       });
       const toId = await transactionRepo.createTransaction({
-        type: 'transferencia', date: data.date, amount: data.to_amount || data.amount,
+        type: 'transferencia', date: data.date, amount: Math.abs(data.to_amount || data.amount),
         account_id: data.to_account_id, to_account_id: data.account_id,
         to_amount: data.amount, note: data.note, tags: data.tags,
         linked_transfer_id: fromId,
@@ -448,23 +483,34 @@ async function main() {
       if (parsed.success) {
         if (parsed.data.type === 'transferencia' && parsed.data.to_account_id) {
           const fromId = await transactionRepo.createTransaction({
-            type: 'transferencia', date: parsed.data.date, amount: -parsed.data.amount,
+            type: 'transferencia', date: parsed.data.date, amount: -Math.abs(parsed.data.amount),
             account_id: parsed.data.account_id, to_account_id: parsed.data.to_account_id,
             to_amount: parsed.data.to_amount, note: parsed.data.note, tags: parsed.data.tags,
             category_id: parsed.data.category_id,
           });
           const toId = await transactionRepo.createTransaction({
-            type: 'transferencia', date: parsed.data.date, amount: parsed.data.to_amount || parsed.data.amount,
+            type: 'transferencia', date: parsed.data.date, amount: Math.abs(parsed.data.to_amount || parsed.data.amount),
             account_id: parsed.data.to_account_id, to_account_id: parsed.data.account_id,
             to_amount: parsed.data.amount, note: parsed.data.note, tags: parsed.data.tags,
             linked_transfer_id: fromId,
             category_id: parsed.data.category_id,
           });
           await transactionRepo.updateTransaction(fromId, { linked_transfer_id: toId });
+        } else {
+          const data = { ...parsed.data };
+          if (data.type === 'gasto') data.amount = -Math.abs(data.amount);
+          else if (data.type === 'ingreso') data.amount = Math.abs(data.amount);
+          await transactionRepo.createTransaction(data as any);
         }
       }
     } else {
-      await transactionRepo.updateTransaction(id, req.body);
+      const updateData = { ...req.body };
+      if (updateData.type === 'gasto' && updateData.amount != null) {
+        updateData.amount = -Math.abs(updateData.amount);
+      } else if (updateData.type === 'ingreso' && updateData.amount != null) {
+        updateData.amount = Math.abs(updateData.amount);
+      }
+      await transactionRepo.updateTransaction(id, updateData);
     }
     res.json({ ok: true });
   });
