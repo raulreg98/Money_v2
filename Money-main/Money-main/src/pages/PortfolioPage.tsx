@@ -906,12 +906,47 @@ function AddMovementModal({ productId, existing, onClose }: { productId: number;
   const [type, setType] = useState(existing?.type || 'compra');
   const [date, setDate] = useState(existing?.date || new Date().toISOString().slice(0, 10));
   const [units, setUnits] = useState(existing?.units?.toString() || '');
-  const [amount, setAmount] = useState(existing?.amount_eur?.toString() || '');
+  const initialUnitPrice = (existing?.units && existing?.amount_eur) ? ((existing.amount_eur - (existing.fee || 0)) / existing.units).toString() : '';
+  const [unitPrice, setUnitPrice] = useState(initialUnitPrice);
   const [fee, setFee] = useState(existing?.fee?.toString() || '');
+  const [amount, setAmount] = useState(existing?.amount_eur?.toString() || '');
   const [note, setNote] = useState(existing?.note || '');
   const [portfolio, setPortfolio] = useState(existing?.portfolio || '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Recalculate Total Cost whenever Units, Unit Price or Fee changes
+  const handleUnitsChange = (val: string) => {
+    setUnits(val);
+    const u = parseFloat(val);
+    const p = parseFloat(unitPrice);
+    const f = parseFloat(fee) || 0;
+    if (!isNaN(u) && !isNaN(p)) {
+      setAmount(((u * p) + f).toFixed(2));
+    }
+  };
+
+  const handleUnitPriceChange = (val: string) => {
+    setUnitPrice(val);
+    const u = parseFloat(units);
+    const p = parseFloat(val);
+    const f = parseFloat(fee) || 0;
+    if (!isNaN(u) && !isNaN(p)) {
+      setAmount(((u * p) + f).toFixed(2));
+    }
+  };
+
+  const handleFeeChange = (val: string) => {
+    setFee(val);
+    const u = parseFloat(units);
+    const p = parseFloat(unitPrice);
+    const f = parseFloat(val) || 0;
+    if (!isNaN(u) && !isNaN(p)) {
+      setAmount(((u * p) + f).toFixed(2));
+    } else if (!isNaN(parseFloat(amount))) {
+      // Keep existing total cost
+    }
+  };
 
   const save = async () => {
     if (!amount) { setError('El importe es obligatorio'); return; }
@@ -953,14 +988,17 @@ function AddMovementModal({ productId, existing, onClose }: { productId: number;
           <Field label="Fecha"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Unidades"><input type="number" step="any" value={units} onChange={(e) => setUnits(e.target.value)} className={inputCls} /></Field>
-          <Field label="Importe (€)"><input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></Field>
+          <Field label="Unidades/Participaciones"><input type="number" step="any" value={units} onChange={(e) => handleUnitsChange(e.target.value)} className={inputCls} placeholder="Ej: 10" /></Field>
+          <Field label="Precio por unidad (€)"><input type="number" step="any" value={unitPrice} onChange={(e) => handleUnitPriceChange(e.target.value)} className={inputCls} placeholder="Ej: 150.00" /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Comisión (€)"><input type="number" step="any" value={fee} onChange={(e) => setFee(e.target.value)} className={inputCls} /></Field>
-          <Field label="Cartera (broker)"><input value={portfolio} onChange={(e) => setPortfolio(e.target.value)} className={inputCls} placeholder="Opcional" /></Field>
+          <Field label="Comisiones (€)"><input type="number" step="any" value={fee} onChange={(e) => handleFeeChange(e.target.value)} className={inputCls} placeholder="Ej: 2.50" /></Field>
+          <Field label="Coste Total (€)"><input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} placeholder="=(Unidades * Precio) + Comisiones" /></Field>
         </div>
-        <Field label="Nota"><input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cartera (broker)"><input value={portfolio} onChange={(e) => setPortfolio(e.target.value)} className={inputCls} placeholder="Opcional" /></Field>
+          <Field label="Nota"><input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} /></Field>
+        </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-lg transition-colors">Cancelar</button>

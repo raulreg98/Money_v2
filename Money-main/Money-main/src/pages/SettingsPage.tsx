@@ -351,118 +351,127 @@ function MoneymatterPreview({ preview, executing, onImport, onCancel }: {
   onImport: () => void;
   onCancel: () => void;
 }) {
-  const c = preview.counts;
-  const hasErrors = preview.errors.length > 0;
-  const hasWarnings = preview.warnings.length > 0;
+  const [editedData, setEditedData] = useState(preview);
+  const [tab, setTab] = useState<'summary' | 'transactions'>('summary');
+
+  const c = editedData.counts;
+
+  const handleTxChange = (index: number, field: string, value: any) => {
+    const updated = { ...editedData };
+    const txs = [...updated.parsedData.transactions];
+    txs[index] = { ...txs[index], [field]: value };
+    updated.parsedData.transactions = txs;
+    setEditedData(updated);
+  };
 
   return (
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-      {preview.formatVersion !== 1 && (
-        <div className="flex items-start gap-2 bg-amber-950/40 border border-amber-900/40 rounded-lg p-3">
-          <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-amber-300 text-xs">
-            Versión del formato: {preview.formatVersion ?? 'desconocida'}. Se esperaba 1. Se intentará importar de todas formas.
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Cuentas', value: c.accounts },
-          { label: 'Categorías', value: c.categories },
-          { label: 'Tags', value: c.tags },
-          { label: 'Transacciones', value: c.transactions },
-          { label: 'Transferencias', value: c.transfers },
-          { label: 'Productos', value: c.products },
-          { label: 'Movimientos', value: c.movements },
-          { label: 'Efectivo', value: c.cashProducts },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-slate-800/50 rounded-lg p-3 text-center">
-            <p className="text-xl font-bold text-white">{value}</p>
-            <p className="text-slate-400 text-xs mt-0.5">{label}</p>
-          </div>
-        ))}
+    <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+      <div className="flex gap-2 border-b border-slate-800 pb-2">
+        <button
+          onClick={() => setTab('summary')}
+          className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${tab === 'summary' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+        >
+          Resumen ({c.transactions} txs)
+        </button>
+        <button
+          onClick={() => setTab('transactions')}
+          className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${tab === 'transactions' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}
+        >
+          Editar / Corregir Transacciones
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-800/50 rounded-lg p-3">
-          <p className="text-slate-400 text-xs">Total ingresos</p>
-          <p className="text-emerald-400 font-semibold text-sm mt-1">{formatEUR(preview.totals.income)}</p>
-        </div>
-        <div className="bg-slate-800/50 rounded-lg p-3">
-          <p className="text-slate-400 text-xs">Total gastos</p>
-          <p className="text-red-400 font-semibold text-sm mt-1">{formatEUR(preview.totals.expenses)}</p>
-        </div>
-      </div>
-
-      <div className="bg-slate-800/50 rounded-lg p-3">
-        <p className="text-slate-400 text-xs">Rango de fechas</p>
-        <p className="text-slate-200 text-sm mt-1">{preview.dateRange.min || '—'} a {preview.dateRange.max || '—'}</p>
-      </div>
-
-      {preview.balanceChecks.length > 0 && (
-        <div>
-          <p className="text-slate-300 text-sm font-medium mb-2">Verificación de saldos</p>
-          <div className="space-y-1">
-            {preview.balanceChecks.map((bc: any, i: number) => {
-              const ok = Math.abs(bc.diff) < 0.01;
-              return (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <span className={ok ? 'text-emerald-400' : 'text-amber-400'}>{bc.account}</span>
-                  <span className={ok ? 'text-emerald-400' : 'text-amber-400'}>
-                    {ok ? 'Coincide' : `Diferencia: ${formatEUR(Math.abs(bc.diff))}`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {preview.holdingsChecks.length > 0 && (
-        <div>
-          <p className="text-slate-300 text-sm font-medium mb-2">Verificación de posiciones</p>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {preview.holdingsChecks.map((hc: any, i: number) => {
-              const ok = hc.unitsMatch && hc.costMatch;
-              return (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">{hc.portfolio} / {hc.security}</span>
-                  <span className={ok ? 'text-emerald-400' : 'text-amber-400'}>
-                    {ok ? 'Coincide' : `No coincide${!hc.unitsMatch ? ' (unidades)' : ''}${!hc.costMatch ? ' (coste)' : ''}`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {hasWarnings && (
-        <div>
-          <p className="text-amber-400 text-sm font-medium mb-1">Avisos ({preview.warnings.length})</p>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {preview.warnings.map((w: string, i: number) => (
-              <p key={i} className="text-amber-300/80 text-xs">{w}</p>
+      {tab === 'summary' && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Cuentas', value: c.accounts },
+              { label: 'Categorías', value: c.categories },
+              { label: 'Tags', value: c.tags },
+              { label: 'Transacciones', value: c.transactions },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-slate-800/50 rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-white">{value}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{label}</p>
+              </div>
             ))}
           </div>
-        </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-slate-400 text-xs">Total ingresos</p>
+              <p className="text-emerald-400 font-semibold text-sm mt-1">{formatEUR(editedData.totals.income)}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-slate-400 text-xs">Total gastos</p>
+              <p className="text-red-400 font-semibold text-sm mt-1">{formatEUR(editedData.totals.expenses)}</p>
+            </div>
+          </div>
+        </>
       )}
 
-      {hasErrors && (
-        <div>
-          <p className="text-red-400 text-sm font-medium mb-1">Errores ({preview.errors.length})</p>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {preview.errors.map((e: any, i: number) => (
-              <p key={i} className="text-red-300/80 text-xs">Fila {e.row}: {e.error}</p>
-            ))}
-          </div>
+      {tab === 'transactions' && (
+        <div className="overflow-x-auto max-h-80">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-slate-400 text-left border-b border-slate-800">
+                <th className="p-2 font-medium">Fecha</th>
+                <th className="p-2 font-medium">Tipo</th>
+                <th className="p-2 font-medium">Importe (€)</th>
+                <th className="p-2 font-medium">Nota / Concepto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {editedData.parsedData.transactions.slice(0, 50).map((tx: any, idx: number) => (
+                <tr key={idx} className="border-b border-slate-800/50">
+                  <td className="p-2">
+                    <input
+                      type="date"
+                      value={tx.date}
+                      onChange={(e) => handleTxChange(idx, 'date', e.target.value)}
+                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs outline-none"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <select
+                      value={tx.type}
+                      onChange={(e) => handleTxChange(idx, 'type', e.target.value)}
+                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs outline-none"
+                    >
+                      <option value="gasto">Gasto</option>
+                      <option value="ingreso">Ingreso</option>
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <input
+                      type="number"
+                      step="any"
+                      value={tx.amount}
+                      onChange={(e) => handleTxChange(idx, 'amount', parseFloat(e.target.value) || 0)}
+                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs w-20 outline-none"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <input
+                      type="text"
+                      value={tx.note || ''}
+                      onChange={(e) => handleTxChange(idx, 'note', e.target.value)}
+                      className="bg-slate-800 text-white rounded px-2 py-1 border border-slate-700 text-xs w-full outline-none"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {editedData.parsedData.transactions.length > 50 && (
+            <p className="text-slate-500 text-xs mt-2 text-center">Mostrando las primeras 50 transacciones de {editedData.parsedData.transactions.length}</p>
+          )}
         </div>
       )}
 
       <div className="flex gap-3 pt-2 sticky bottom-0 bg-slate-900 pb-1">
         <button onClick={onCancel} disabled={executing} className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-sm py-2.5 rounded-lg transition-colors">Cancelar</button>
-        <button onClick={onImport} disabled={executing} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-sm py-2.5 rounded-lg transition-colors">
+        <button onClick={() => onImport()} disabled={executing} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-sm py-2.5 rounded-lg transition-colors">
           {executing ? 'Importando…' : 'Importar'}
         </button>
       </div>
