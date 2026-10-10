@@ -10,17 +10,23 @@ import { CategoriesPage } from '@/pages/CategoriesPage';
 
 function AppContent() {
   const [page, setPage] = useState<PageId>('dashboard');
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
 
-  const handleNavigate = (p: PageId) => {
+  const handleNavigate = (p: PageId, accountId?: number) => {
     setPage(p);
+    if (accountId !== undefined) {
+      setSelectedAccountId(accountId);
+    } else {
+      setSelectedAccountId(null);
+    }
   };
 
   return (
     <AppLayout current={page} onNavigate={handleNavigate}>
-      <ErrorBoundary key={page}>
+      <ErrorBoundary key={`${page}-${selectedAccountId}`}>
         {page === 'dashboard' && <DashboardPage />}
         {page === 'portfolio' && <PortfolioPage />}
-        {page === 'accounts' && <AccountsPage />}
+        {page === 'accounts' && <AccountsPage initialAccountId={selectedAccountId} />}
         {page === 'categories' && <CategoriesPage />}
         {page === 'charts' && <ChartsPage />}
         {page === 'settings' && <SettingsPage />}

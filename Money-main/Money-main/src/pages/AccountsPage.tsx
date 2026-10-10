@@ -12,9 +12,16 @@ import {
 
 type View = 'list' | 'detail';
 
-export function AccountsPage() {
-  const [view, setView] = useState<View>('list');
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+export function AccountsPage({ initialAccountId }: { initialAccountId?: number | null }) {
+  const [view, setView] = useState<View>(initialAccountId ? 'detail' : 'list');
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(initialAccountId || null);
+
+  useEffect(() => {
+    if (initialAccountId) {
+      setSelectedAccountId(initialAccountId);
+      setView('detail');
+    }
+  }, [initialAccountId]);
 
   if (view === 'detail' && selectedAccountId !== null) {
     return <AccountDetail accountId={selectedAccountId} onBack={() => { setView('list'); setSelectedAccountId(null); }} />;

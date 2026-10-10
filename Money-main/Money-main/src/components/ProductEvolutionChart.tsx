@@ -11,7 +11,7 @@ interface ProductEvolutionChartProps {
   products: { id: number; name: string }[];
 }
 
-type Metric = 'valor' | 'rentabilidad';
+type Metric = 'valor' | 'rentabilidad' | 'pure_return';
 type Period = '1M' | '3M' | '6M' | '1A' | 'TODO' | 'CUSTOM';
 
 const PERIODS: { id: Period; label: string }[] = [
@@ -68,7 +68,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
       } else {
         setSelected(products.slice(0, 5).map(p => p.id));
       }
-      if (savedMetric === 'valor' || savedMetric === 'rentabilidad') setMetric(savedMetric);
+      if (savedMetric === 'valor' || savedMetric === 'rentabilidad' || savedMetric === 'pure_return') setMetric(savedMetric);
       if (savedPeriod && PERIODS.some(p => p.id === savedPeriod)) setPeriod(savedPeriod as Period);
       if (savedTotal === 'true') setShowTotal(true);
       if (savedFrom) setCustomFrom(savedFrom);
@@ -112,9 +112,14 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
           for (const point of p.series) {
             if (!dateMap.has(point.date)) dateMap.set(point.date, { date: point.date });
             const row = dateMap.get(point.date)!;
-            const val = metric === 'valor'
-              ? point.value
-              : point.invested > 0 ? ((point.value / point.invested) - 1) * 100 : 0;
+            let val = 0;
+            if (metric === 'valor') {
+              val = point.value;
+            } else if (metric === 'pure_return') {
+              val = point.value - point.invested;
+            } else {
+              val = point.invested > 0 ? ((point.value / point.invested) - 1) * 100 : 0;
+            }
             row[`p${p.productId}`] = val;
             row[`name_p${p.productId}`] = p.name;
           }
@@ -131,6 +136,14 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
             }
             if (metric === 'valor') {
               row.__total = total;
+            } else if (metric === 'pure_return') {
+              let totalInvested = 0;
+              let totalValue = 0;
+              for (const p of productsData) {
+                const point = p.series.find((s: any) => s.date === row.date);
+                if (point) { totalValue += point.value; totalInvested += point.invested; }
+              }
+              row.__total = totalValue - totalInvested;
             } else {
               let totalInvested = 0;
               let totalValue = 0;
@@ -171,8 +184,8 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
 
   const showCustom = period === 'CUSTOM';
   const hasData = data.length > 0;
-  const formatY = (v: number) => metric === 'valor' ? formatAxisEUR(v) : formatAxisPercent(v);
-  const formatTooltip = (v: any) => metric === 'valor' ? formatEUR(Number(v)) : formatPercent(Number(v));
+  const formatY = (v: number) => (metric === 'valor' || metric === 'pure_return') ? formatAxisEUR(v) : formatAxisPercent(v);
+  const formatTooltip = (v: any) => (metric === 'valor' || metric === 'pure_return') ? formatEUR(Number(v), { sign: metric === 'pure_return' }) : formatPercent(Number(v));
 
   const lines = selected.map(id => ({
     key: `p${id}`,
@@ -191,7 +204,8 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
               onChange={(e) => setMetric(e.target.value as Metric)}
               className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 border border-slate-700 focus:border-blue-500 outline-none"
             >
-              <option value="valor">Valor (€)</option>
+              <option value="valor">Valor Total Patrimonio (€)</option>
+              <option value="pure_return">Rendimiento Puro (sin aportaciones) (€)</option>
               <option value="rentabilidad">Rentabilidad (%)</option>
             </select>
             <button
