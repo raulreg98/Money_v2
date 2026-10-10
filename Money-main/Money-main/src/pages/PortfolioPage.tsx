@@ -3,8 +3,9 @@ import { api } from '@/lib/api';
 import type { Product, ProductDetailFull } from '@/types';
 import { Card } from '@/components/Card';
 import { ProductEvolutionChart } from '@/components/ProductEvolutionChart';
-import { formatEUR, formatPercent, formatDate, formatAxisEUR, formatUnits, PRODUCT_TYPES } from '@/lib/format';
+import { formatEUR, formatPercent, formatDate, formatAxisEUR, formatUnits, PRODUCT_TYPES, CHART_COLORS } from '@/lib/format';
 import { ArrowLeft, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, Download, AlertTriangle, Pencil, Archive } from 'lucide-react';
+import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Cell, CartesianGrid, AreaChart, Area } from 'recharts';
 
 export function PortfolioPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -1209,8 +1210,6 @@ function MovementBadge({ type }: { type: string }) {
   return <span className={`inline-block px-2 py-0.5 rounded text-xs border ${styles[type] || styles.saldo}`}>{labels[type] || type}</span>;
 }
 
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Cell, CartesianGrid } from 'recharts';
-
 function parseKeyValueText(text: string | null): { name: string; value: number }[] {
   if (!text || !text.trim()) return [];
   try {
@@ -1300,8 +1299,6 @@ function ProductBreakdowns({ product }: { product: Product }) {
     </div>
   );
 }
-
-import { AreaChart, Area } from 'recharts';
 
 function InvestmentDashboardCharts({ products, detailMap, allMovements }: { products: Product[]; detailMap: Map<number, any>; allMovements: any[] }) {
   const [accumulatedMode, setAccumulatedMode] = useState<'eur' | 'pct'>('eur');
