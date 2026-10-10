@@ -150,6 +150,7 @@ export const api = {
 
   // Categories
   getCategories: () => request<any[]>('/categories'),
+  reorderCategories: (ids: number[]) => request<{ ok: boolean }>('/categories/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
   createCategory: (data: any) => request<{ id: number }>('/categories', { method: 'POST', body: JSON.stringify(data) }),
   updateCategory: (id: number, data: any) => request<{ ok: boolean }>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCategory: (id: number, reassignTo?: number) => request<{ ok: boolean }>(`/categories/${id}${reassignTo !== undefined ? `?reassign_to=${reassignTo}` : ''}`, { method: 'DELETE' }),
