@@ -60,6 +60,7 @@ function AccountListList({ onSelect }: { onSelect: (id: number) => void }) {
   }
 
   const accountBalance = (acc: Account) => {
+    if (acc.total_balance !== undefined) return acc.total_balance;
     const txs = transactions.filter((t) => t.account_id === acc.id);
     return acc.initial_balance + txs.reduce((s, t) => s + t.amount, 0);
   };
@@ -273,10 +274,11 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
     if (diff === 0) { setShowAdjustBalance(false); return; }
     setAdjusting(true);
     try {
+      const type = diff > 0 ? 'ingreso' : 'gasto';
       await api.createTransaction({
-        type: 'ajuste',
+        type,
         date: new Date().toISOString().slice(0, 10),
-        amount: diff,
+        amount: Math.abs(diff),
         account_id: accountId,
         note: `Ajuste de saldo a ${formatEUR(target)}`,
       });
@@ -690,7 +692,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <Field label="Saldo objetivo (€)">
             <input type="number" step="any" value={targetBalance} onChange={(e) => setTargetBalance(e.target.value)} className={inputCls} autoFocus />
           </Field>
-          <p className="text-slate-400 text-xs mt-1">Se creará un movimiento especial de ajuste que no afectará a las estadísticas globales.</p>
+          <p className="text-slate-400 text-xs mt-1">Se creará una transacción de ingreso o gasto por la diferencia para ajustar el saldo real.</p>
         </Modal>
       )}
       {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}

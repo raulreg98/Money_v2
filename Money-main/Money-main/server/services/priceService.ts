@@ -1,4 +1,4 @@
-import { getAllProductsWithArchived, getProductById } from '../repositories/productRepo';
+import { getAllProductsWithArchived, getProductById, updateProduct } from '../repositories/productRepo';
 import { savePrice, getLatestPrice, savePriceHistory, getPriceHistoryBetween, deletePricesByProduct } from '../repositories/priceRepo';
 import { getRate } from './exchangeRates';
 import { getMovementsByProduct } from '../repositories/movementRepo';
@@ -144,6 +144,90 @@ export async function updateProductPrice(productId: number): Promise<PriceResult
   return fetchProductPrice(product);
 }
 
+export async function fetchAndStoreMarketDetails(productId: number, symbol: string): Promise<void> {
+  try {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+    };
+    const cookieRes = await fetch('https://fc.yahoo.com', { headers });
+    const cookie = cookieRes.headers.get('set-cookie');
+    if (!cookie) return;
+
+    const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', { headers: { ...headers, cookie } });
+    if (!crumbRes.ok) return;
+    const crumb = await crumbRes.text();
+    if (!crumb) return;
+
+    const summaryUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=topHoldings,assetProfile&crumb=${encodeURIComponent(crumb)}`;
+    const summaryRes = await fetch(summaryUrl, { headers: { ...headers, cookie } });
+    if (!summaryRes.ok) return;
+
+    const json = await summaryRes.json() as any;
+    const res = json?.quoteSummary?.result?.[0];
+    if (!res) return;
+
+    let countryBreakdown: { country: string; percentage: number }[] | null = null;
+    let sectorBreakdown: { sector: string; percentage: number }[] | null = null;
+    let topHoldings: { name: string; percentage: number }[] | null = null;
+
+    if (res.topHoldings) {
+      if (Array.isArray(res.topHoldings.holdings) && res.topHoldings.holdings.length > 0) {
+        topHoldings = res.topHoldings.holdings.slice(0, 10).map((h: any) => ({
+          name: h.holdingName || h.symbol || 'Posición',
+          percentage: (h.holdingPercent?.raw || 0) * 100,
+        })).filter((h: any) => h.percentage > 0);
+      }
+
+      if (Array.isArray(res.topHoldings.sectorWeightings) && res.topHoldings.sectorWeightings.length > 0) {
+        const sectorNamesMap: Record<string, string> = {
+          realestate: 'Bienes Raíces',
+          consumer_cyclical: 'Consumo Cíclico',
+          basic_materials: 'Materiales Básicos',
+          consumer_defensive: 'Consumo Defensivo',
+          technology: 'Tecnología',
+          communication_services: 'Servicios de Comunicación',
+          financial_services: 'Servicios Financieros',
+          utilities: 'Servicios Públicos',
+          industrials: 'Industrial',
+          energy: 'Energía',
+          healthcare: 'Salud',
+        };
+        sectorBreakdown = res.topHoldings.sectorWeightings.map((sw: any) => {
+          const key = Object.keys(sw)[0];
+          const val = sw[key]?.raw || 0;
+          return {
+            sector: sectorNamesMap[key] || key,
+            percentage: val * 100,
+          };
+        }).filter((s: any) => s.percentage > 0).sort((a: any, b: any) => b.percentage - a.percentage);
+      }
+    }
+
+    if (res.assetProfile) {
+      if (res.assetProfile.sector) {
+        if (!sectorBreakdown || sectorBreakdown.length === 0) {
+          sectorBreakdown = [{ sector: res.assetProfile.sector, percentage: 100 }];
+        }
+      }
+      if (res.assetProfile.country) {
+        countryBreakdown = [{ country: res.assetProfile.country, percentage: 100 }];
+      }
+    }
+
+    const updates: Partial<any> = {};
+    if (countryBreakdown && countryBreakdown.length > 0) updates.country_breakdown = JSON.stringify(countryBreakdown);
+    if (sectorBreakdown && sectorBreakdown.length > 0) updates.sector_breakdown = JSON.stringify(sectorBreakdown);
+    if (topHoldings && topHoldings.length > 0) updates.top_holdings = JSON.stringify(topHoldings);
+
+    if (Object.keys(updates).length > 0) {
+      await updateProduct(productId, updates);
+    }
+  } catch (e: any) {
+    console.error('Error al obtener datos de mercado Yahoo para', symbol, e.message);
+  }
+}
+
 async function fetchProductPrice(product: {
   id: number; name: string; ticker: string | null; isin: string | null;
   currency: string; price_source: string | null; alt_source: string | null;
@@ -182,6 +266,12 @@ async function fetchProductPrice(product: {
     if (result) {
       await savePrice(product.id, result.price, result.currency, result.source, today);
       logPrice(product.name, provider.name, sym, 'OK', `${result.price} ${result.currency}`);
+
+      // Intentar enriquecer datos de mercado (país, sector, top 10 posiciones) si se usa Yahoo
+      if (provider.name === 'Yahoo Finance') {
+        fetchAndStoreMarketDetails(product.id, sym).catch(() => {});
+      }
+
       return { productId: product.id, productName: product.name, success: true, price: result.price, currency: result.currency, source: result.source, date: today };
     } else {
       logPrice(product.name, provider.name, sym, 'FAIL', 'sin respuesta');

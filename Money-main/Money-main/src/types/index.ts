@@ -65,6 +65,9 @@ export interface Account {
   exclude_from_net_worth: number;
   created_at: string;
   updated_at: string;
+  cash_balance?: number;
+  invested_value?: number;
+  total_balance?: number;
 }
 
 export interface Transaction {

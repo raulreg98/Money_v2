@@ -11,7 +11,7 @@ interface ProductEvolutionChartProps {
   products: { id: number; name: string; color?: string | null }[];
 }
 
-type Metric = 'valor' | 'rentabilidad' | 'pure_return' | 'pure_return_percent';
+type Metric = 'valor' | 'rentabilidad' | 'pure_return' | 'pure_return_percent' | 'area_stacked_eur' | 'area_stacked_pct';
 type Period = '1M' | '3M' | '6M' | '1A' | 'TODO' | 'CUSTOM';
 
 const PERIODS: { id: Period; label: string }[] = [
@@ -113,7 +113,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
             if (!dateMap.has(point.date)) dateMap.set(point.date, { date: point.date });
             const row = dateMap.get(point.date)!;
             let val = 0;
-            if (metric === 'valor') {
+            if (metric === 'valor' || metric === 'area_stacked_eur' || metric === 'area_stacked_pct') {
               val = point.value;
             } else if (metric === 'pure_return') {
               val = point.value - point.invested;
@@ -126,17 +126,33 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
             row[`name_p${p.productId}`] = p.name;
           }
         }
-        const sorted = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+        let sorted = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+        if (metric === 'area_stacked_pct') {
+          sorted = sorted.map(row => {
+            let rowSum = 0;
+            for (const p of productsData) {
+              rowSum += Number(row[`p${p.productId}`]) || 0;
+            }
+            const newRow = { ...row };
+            for (const p of productsData) {
+              const rawVal = Number(row[`p${p.productId}`]) || 0;
+              newRow[`p${p.productId}`] = rowSum > 0 ? (rawVal / rowSum) * 100 : 0;
+            }
+            return newRow;
+          });
+        }
+
         if (showTotal && sorted.length > 0) {
           for (const row of sorted) {
             let total = 0;
             for (const p of productsData) {
               const v = row[`p${p.productId}`];
               if (typeof v === 'number') {
-                total += metric === 'valor' ? v : 0;
+                total += (metric === 'valor' || metric === 'area_stacked_eur') ? v : 0;
               }
             }
-            if (metric === 'valor') {
+            if (metric === 'valor' || metric === 'area_stacked_eur') {
               row.__total = total;
             } else if (metric === 'pure_return') {
               let totalInvested = 0;
@@ -194,9 +210,11 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
 
   const showCustom = period === 'CUSTOM';
   const hasData = data.length > 0;
-  const isPercent = metric === 'rentabilidad' || metric === 'pure_return_percent';
+  const isPercent = metric === 'rentabilidad' || metric === 'pure_return_percent' || metric === 'area_stacked_pct';
   const formatY = (v: number) => isPercent ? formatAxisPercent(v) : formatAxisEUR(v);
-  const formatTooltip = (v: any) => isPercent ? formatPercent(Number(v)) : formatEUR(Number(v), { sign: metric === 'pure_return' });
+  const formatTooltip = (v: any) => isPercent ? formatPercent(Number(v), 1) : formatEUR(Number(v), { sign: metric === 'pure_return' });
+
+  const isAreaChart = metric === 'area_stacked_eur' || metric === 'area_stacked_pct';
 
   const lines = selected.map(id => {
     const p = products.find(prod => prod.id === id);
@@ -219,6 +237,8 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
               className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 border border-slate-700 focus:border-blue-500 outline-none"
             >
               <option value="valor">Valor Total Patrimonio (€)</option>
+              <option value="area_stacked_eur">Área Apilada - Dinero Total (€)</option>
+              <option value="area_stacked_pct">Área Apilada - Porcentaje (%)</option>
               <option value="pure_return">Rendimiento Puro (sin aportaciones) (€)</option>
               <option value="pure_return_percent">Rendimiento Puro (%)</option>
               <option value="rentabilidad">Rentabilidad (%)</option>
@@ -308,6 +328,37 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
           <div className="text-center py-16">
             <p className="text-slate-500 text-sm">Sin datos para mostrar. Selecciona productos con movimientos y precios.</p>
           </div>
+        ) : isAreaChart ? (
+          <ResponsiveContainer width="100%" height={320}>
+            <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
+              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatY} domain={metric === 'area_stacked_pct' ? [0, 100] : ['auto', 'auto']} />
+              <Tooltip
+                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                itemStyle={{ color: '#ffffff' }}
+                labelStyle={{ color: '#cbd5e1' }}
+                formatter={(v: any, name: any) => [formatTooltip(v), name]}
+              />
+              <Legend
+                onClick={(e: any) => toggleLegend(e.dataKey)}
+                wrapperStyle={{ fontSize: 12, cursor: 'pointer' }}
+              />
+              {lines.map(line => (
+                <Area
+                  key={line.key}
+                  type="monotone"
+                  dataKey={line.key}
+                  name={line.name}
+                  stackId="1"
+                  stroke={line.color}
+                  fill={line.color}
+                  fillOpacity={0.6}
+                  hide={hidden.has(line.key)}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
         ) : (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
@@ -315,8 +366,9 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
               <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatY} domain={['auto', 'auto']} />
               <Tooltip
-                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#94a3b8' }}
+                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                itemStyle={{ color: '#ffffff' }}
+                labelStyle={{ color: '#cbd5e1' }}
                 formatter={(v: any, name: any) => [formatTooltip(v), name]}
               />
               <Legend
