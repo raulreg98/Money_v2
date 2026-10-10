@@ -217,6 +217,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const [showAllTx, setShowAllTx] = useState(false);
   const [showAddTx, setShowAddTx] = useState(false);
   const [editingAccount, setEditingAccount] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [selectedTxIds, setSelectedTxIds] = useState<Set<number>>(new Set());
   const [bulkCategory, setBulkCategory] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState('');
@@ -533,12 +534,22 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                         <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
                         <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(Math.abs(t.amount), { sign: true })}</td>
                         <td className="px-5 py-2.5 text-right">
-                          <button
-                            onClick={async () => { await api.deleteTransaction(t.id); loadSummary(); }}
-                            className="text-slate-600 hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1 justify-end">
+                            <button
+                              onClick={() => setEditingTx(t)}
+                              className="text-slate-600 hover:text-blue-400 transition-colors"
+                              title="Editar"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={async () => { await api.deleteTransaction(t.id); loadSummary(); }}
+                              className="text-slate-600 hover:text-red-400 transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -561,6 +572,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
       </Card>
 
       {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
+      {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
       {editingAccount && <EditAccountModal account={account} onClose={() => { setEditingAccount(false); loadSummary(); }} />}
     </div>
   );
@@ -685,14 +697,14 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   );
 }
 
-function AddTransactionModal({ accounts, categories, defaultAccountId, onClose }: { accounts: Account[]; categories: Category[]; defaultAccountId?: number; onClose: () => void }) {
-  const [type, setType] = useState('gasto');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [amount, setAmount] = useState('');
-  const [accountId, setAccountId] = useState(defaultAccountId?.toString() || accounts[0]?.id?.toString() || '');
-  const [toAccountId, setToAccountId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [note, setNote] = useState('');
+function AddTransactionModal({ existingTx, accounts, categories, defaultAccountId, onClose }: { existingTx?: Transaction; accounts: Account[]; categories: Category[]; defaultAccountId?: number; onClose: () => void }) {
+  const [type, setType] = useState(existingTx?.type || 'gasto');
+  const [date, setDate] = useState(existingTx?.date || new Date().toISOString().slice(0, 10));
+  const [amount, setAmount] = useState(existingTx ? Math.abs(existingTx.amount).toString() : '');
+  const [accountId, setAccountId] = useState(existingTx?.account_id?.toString() || defaultAccountId?.toString() || accounts[0]?.id?.toString() || '');
+  const [toAccountId, setToAccountId] = useState(existingTx?.to_account_id?.toString() || '');
+  const [categoryId, setCategoryId] = useState(existingTx?.category_id?.toString() || '');
+  const [note, setNote] = useState(existingTx?.note || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -700,19 +712,24 @@ function AddTransactionModal({ accounts, categories, defaultAccountId, onClose }
     if (!amount || !accountId) { setError('Faltan datos'); return; }
     setSaving(true);
     try {
-      await api.createTransaction({
+      const payload = {
         type, date, amount: parseFloat(amount),
         account_id: parseInt(accountId),
         to_account_id: type === 'transferencia' && toAccountId ? parseInt(toAccountId) : null,
         note: note || null,
         category_id: categoryId ? parseInt(categoryId) : null,
-      });
+      };
+      if (existingTx) {
+        await api.updateTransaction(existingTx.id, payload);
+      } else {
+        await api.createTransaction(payload);
+      }
       onClose();
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
 
   return (
-    <Modal title="Nueva transacción" onClose={onClose} onSave={save} saving={saving} error={error}>
+    <Modal title={existingTx ? "Editar transacción" : "Nueva transacción"} onClose={onClose} onSave={save} saving={saving} error={error}>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Tipo">
           <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>

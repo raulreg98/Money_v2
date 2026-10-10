@@ -525,6 +525,10 @@ function ProductDetail({ productId, onBack }: { productId: number; onBack: () =>
             <span>Hace {priceAgeDays} días sin actualizar</span>
           </div>
         )}
+        <div className="flex items-center gap-2 border-l border-slate-700 pl-4 my-1">
+          <span className="text-slate-400 text-xs">Cuenta vinculada:</span>
+          <AccountQuickSelect product={product} onDone={reload} />
+        </div>
         <div className="flex-1" />
         <PriceActions productId={productId} onDone={reload} />
       </Card>
@@ -707,6 +711,45 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
         </div>
       </div>
     </div>
+  );
+}
+
+function AccountQuickSelect({ product, onDone }: { product: Product; onDone: () => void }) {
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.getAccounts().then(accs => {
+      const inv = accs.filter((a: any) => !a.archived && a.type === 'inversion');
+      setAccounts(inv);
+    }).catch(() => {});
+  }, []);
+
+  const onChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    const account_id = val ? parseInt(val) : null;
+    setSaving(true);
+    try {
+      await api.updateProduct(product.id, { account_id });
+      onDone();
+    } catch {
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <select
+      value={product.account_id ? String(product.account_id) : ''}
+      onChange={onChange}
+      disabled={saving}
+      className="bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 outline-none focus:border-blue-500"
+    >
+      <option value="">Sin cuenta</option>
+      {accounts.map(a => (
+        <option key={a.id} value={a.id}>{a.name}</option>
+      ))}
+    </select>
   );
 }
 

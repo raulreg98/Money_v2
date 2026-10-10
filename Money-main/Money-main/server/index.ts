@@ -121,6 +121,21 @@ async function main() {
     const parsed = movementSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.issues });
     const id = await movementRepo.createMovement(parsed.data as any);
+
+    // Si es un movimiento de compra y el producto tiene una cuenta vinculada, crear transacción de gasto automáticamente
+    if (parsed.data.type === 'compra' && parsed.data.amount_eur > 0) {
+      const product = await productRepo.getProductById(parsed.data.product_id);
+      if (product && product.account_id) {
+        await transactionRepo.createTransaction({
+          type: 'gasto',
+          date: parsed.data.date,
+          amount: -Math.abs(parsed.data.amount_eur),
+          account_id: product.account_id,
+          note: `Compra de producto: ${product.name}`,
+        } as any);
+      }
+    }
+
     res.json({ id });
   });
 
@@ -428,18 +443,24 @@ async function main() {
   app.post('/api/transactions', async (req, res) => {
     const parsed = txSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.issues });
-    const data = parsed.data;
+    const data = { ...parsed.data };
+
+    if (data.type === 'gasto') {
+      data.amount = -Math.abs(data.amount);
+    } else if (data.type === 'ingreso') {
+      data.amount = Math.abs(data.amount);
+    }
 
     if (data.type === 'transferencia') {
       if (!data.to_account_id) return res.status(400).json({ error: 'Falta la cuenta destino' });
       const fromId = await transactionRepo.createTransaction({
-        type: 'transferencia', date: data.date, amount: -data.amount,
+        type: 'transferencia', date: data.date, amount: -Math.abs(data.amount),
         account_id: data.account_id, to_account_id: data.to_account_id,
         to_amount: data.to_amount, note: data.note, tags: data.tags,
         category_id: data.category_id,
       });
       const toId = await transactionRepo.createTransaction({
-        type: 'transferencia', date: data.date, amount: data.to_amount || data.amount,
+        type: 'transferencia', date: data.date, amount: Math.abs(data.to_amount || data.amount),
         account_id: data.to_account_id, to_account_id: data.account_id,
         to_amount: data.amount, note: data.note, tags: data.tags,
         linked_transfer_id: fromId,
@@ -462,23 +483,34 @@ async function main() {
       if (parsed.success) {
         if (parsed.data.type === 'transferencia' && parsed.data.to_account_id) {
           const fromId = await transactionRepo.createTransaction({
-            type: 'transferencia', date: parsed.data.date, amount: -parsed.data.amount,
+            type: 'transferencia', date: parsed.data.date, amount: -Math.abs(parsed.data.amount),
             account_id: parsed.data.account_id, to_account_id: parsed.data.to_account_id,
             to_amount: parsed.data.to_amount, note: parsed.data.note, tags: parsed.data.tags,
             category_id: parsed.data.category_id,
           });
           const toId = await transactionRepo.createTransaction({
-            type: 'transferencia', date: parsed.data.date, amount: parsed.data.to_amount || parsed.data.amount,
+            type: 'transferencia', date: parsed.data.date, amount: Math.abs(parsed.data.to_amount || parsed.data.amount),
             account_id: parsed.data.to_account_id, to_account_id: parsed.data.account_id,
             to_amount: parsed.data.amount, note: parsed.data.note, tags: parsed.data.tags,
             linked_transfer_id: fromId,
             category_id: parsed.data.category_id,
           });
           await transactionRepo.updateTransaction(fromId, { linked_transfer_id: toId });
+        } else {
+          const data = { ...parsed.data };
+          if (data.type === 'gasto') data.amount = -Math.abs(data.amount);
+          else if (data.type === 'ingreso') data.amount = Math.abs(data.amount);
+          await transactionRepo.createTransaction(data as any);
         }
       }
     } else {
-      await transactionRepo.updateTransaction(id, req.body);
+      const updateData = { ...req.body };
+      if (updateData.type === 'gasto' && updateData.amount != null) {
+        updateData.amount = -Math.abs(updateData.amount);
+      } else if (updateData.type === 'ingreso' && updateData.amount != null) {
+        updateData.amount = Math.abs(updateData.amount);
+      }
+      await transactionRepo.updateTransaction(id, updateData);
     }
     res.json({ ok: true });
   });

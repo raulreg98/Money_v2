@@ -1,21 +1,35 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import type { DashboardData, PortfolioSummary } from '@/types';
+import type { DashboardData, PortfolioSummary, Transaction, Account, Category } from '@/types';
 import { Card, StatCard } from '@/components/Card';
-import { formatEUR, formatPercent, formatAxisEUR } from '@/lib/format';
+import { formatEUR, formatPercent, formatDate } from '@/lib/format';
+import { CategoryBadge } from '@/components/CategorySelector';
 import { Wallet, Briefcase, TrendingUp, PiggyBank } from 'lucide-react';
 
 export function DashboardPage() {
   const [dash, setDash] = useState<DashboardData | null>(null);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [txLimit, setTxLimit] = useState<number>(5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([api.getDashboard(), api.getPortfolioSummary()])
-      .then(([d, s]) => {
+    Promise.all([
+      api.getDashboard(),
+      api.getPortfolioSummary(),
+      api.getTransactions(),
+      api.getAccounts(),
+      api.getCategories(),
+    ])
+      .then(([d, s, t, a, c]) => {
         setDash(d);
         setSummary(s);
+        setTransactions(t);
+        setAccounts(a);
+        setCategories(c);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -36,12 +50,67 @@ export function DashboardPage() {
   const totalReturnPct = summary ? summary.totalReturnPct : 0;
   const trend = totalReturnPct > 0 ? 'up' : totalReturnPct < 0 ? 'down' : 'neutral';
 
+  const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
+  const catById = (id: number | null) => id ? categories.find(c => c.id === id) || null : null;
+  const recentTxs = transactions.slice(0, txLimit);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white tracking-tight">Panel general</h1>
         <p className="text-slate-400 text-sm mt-1">Resumen de tu patrimonio</p>
       </div>
+
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-white font-semibold">Últimas transacciones</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 text-xs">Mostrar:</span>
+            <select
+              value={txLimit}
+              onChange={(e) => setTxLimit(Number(e.target.value))}
+              className="bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 outline-none"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={20}>20</option>
+            </select>
+          </div>
+        </div>
+        {recentTxs.length === 0 ? (
+          <p className="text-slate-500 text-sm p-5">Sin transacciones recientes</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-slate-400 text-left border-b border-slate-800">
+                  <th className="px-5 py-2 font-medium">Fecha</th>
+                  <th className="px-5 py-2 font-medium">Cuenta</th>
+                  <th className="px-5 py-2 font-medium">Detalle</th>
+                  <th className="px-5 py-2 font-medium">Categoría</th>
+                  <th className="px-5 py-2 font-medium text-right">Importe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTxs.map((t) => {
+                  const isExpense = t.type === 'gasto' || (t.type === 'transferencia' && t.amount < 0);
+                  const color = isExpense ? 'text-red-400' : 'text-emerald-400';
+                  return (
+                    <tr key={t.id} className="border-b border-slate-800/50">
+                      <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
+                      <td className="px-5 py-2.5 text-slate-400">{accName(t.account_id)}</td>
+                      <td className="px-5 py-2.5 text-slate-400">{t.note || '—'}</td>
+                      <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
+                      <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(Math.abs(t.amount), { sign: true })}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
