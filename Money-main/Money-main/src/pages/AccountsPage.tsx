@@ -253,7 +253,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
     );
   }
 
-  const { account, balance, transactions, totalCount, accounts: accList, categories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
+  const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
 
   const toggleSelectTx = (id: number) => {
     setSelectedTxIds(prev => {
@@ -325,12 +325,20 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
       </div>
 
       {/* Balance */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MiniStat label="Saldo actual" value={formatEUR(balance)} />
-        <MiniStat label="Inicial" value={formatEUR(account.initial_balance)} />
-        <MiniStat label="Transacciones" value={String(totalCount)} />
-        <MiniStat label="Moneda" value={account.currency} />
-      </div>
+      {account.type === 'inversion' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <MiniStat label="Total de la cuenta" value={formatEUR(totalBalance ?? (balance + (investedValue || 0)))} valueClass="text-blue-400" />
+          <MiniStat label="Efectivo / Saldo líquido" value={formatEUR(balance)} />
+          <MiniStat label="Valor invertido" value={formatEUR(investedValue || 0)} valueClass="text-emerald-400" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MiniStat label="Saldo actual" value={formatEUR(balance)} />
+          <MiniStat label="Inicial" value={formatEUR(account.initial_balance)} />
+          <MiniStat label="Transacciones" value={String(totalCount)} />
+          <MiniStat label="Moneda" value={account.currency} />
+        </div>
+      )}
 
       {/* Charts */}
       <Card className="p-5">

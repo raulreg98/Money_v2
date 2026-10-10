@@ -16,6 +16,7 @@ export interface Product {
   updated_at: string;
   alt_source: string | null;
   alt_symbol: string | null;
+  account_id: number | null;
 }
 
 export interface Movement {

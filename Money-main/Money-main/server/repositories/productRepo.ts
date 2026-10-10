@@ -18,6 +18,7 @@ export interface Product {
   updated_at: string;
   alt_source: string | null;
   alt_symbol: string | null;
+  account_id: number | null;
 }
 
 function rowToProduct(row: any[]): Product {
@@ -39,6 +40,7 @@ function rowToProduct(row: any[]): Product {
     updated_at: row[14] as string,
     alt_source: (row[15] as string) ?? null,
     alt_symbol: (row[16] as string) ?? null,
+    account_id: (row[17] as number) ?? null,
   };
 }
 
@@ -63,17 +65,17 @@ export async function getProductById(id: number): Promise<Product | null> {
   return rowToProduct(result[0].values[0]);
 }
 
-export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'archived' | 'manual_price' | 'long_term' | 'alt_source' | 'alt_symbol'> & {
-  manual_price?: number; long_term?: number; archived?: number; alt_source?: string | null; alt_symbol?: string | null
+export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'archived' | 'manual_price' | 'long_term' | 'alt_source' | 'alt_symbol' | 'account_id'> & {
+  manual_price?: number; long_term?: number; archived?: number; alt_source?: string | null; alt_symbol?: string | null; account_id?: number | null
 }): Promise<number> {
   const db = await getDb();
   db.run(
-    `INSERT INTO products (name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, alt_source, alt_symbol)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, alt_source, alt_symbol, account_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name, data.type, data.isin ?? null, data.ticker ?? null, data.currency, data.price_source ?? null,
       data.ter ?? null, data.risk ?? null, data.category ?? null, data.manual_price ?? 0, data.long_term ?? 1, data.archived ?? 0,
-      data.alt_source ?? null, data.alt_symbol ?? null,
+      data.alt_source ?? null, data.alt_symbol ?? null, data.account_id ?? null,
     ],
   );
   scheduleSave();

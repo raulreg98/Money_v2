@@ -200,4 +200,10 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE categories ADD COLUMN icon TEXT;
     `,
   },
+  {
+    version: 8,
+    sql: `
+      ALTER TABLE products ADD COLUMN account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL;
+    `,
+  },
 ];
