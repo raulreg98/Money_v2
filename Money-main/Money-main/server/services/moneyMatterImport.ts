@@ -443,15 +443,16 @@ export function parseMoneyMatterZip(zipBuffer: Buffer): ImportPreview {
   for (const tx of transactionsJson) {
     if (tx.transferNature !== 'transfer_out_wallet') continue;
     const date = convertUtcToMadridDate(tx.time);
-    const amount = Math.abs(tx.amount / 100);
     const type = tx.transactionType === 'expense' ? 'gasto' : 'ingreso';
-    if (type === 'gasto') totalExpenses += amount;
-    else totalIncome += amount;
+    const rawAmount = Math.abs(tx.amount / 100);
+    const signedAmount = type === 'gasto' ? -rawAmount : rawAmount;
+    if (type === 'gasto') totalExpenses += rawAmount;
+    else totalIncome += rawAmount;
 
     parsedTransactions.push({
       externalId: tx.id,
       type,
-      amount,
+      amount: signedAmount,
       date,
       accountExternalId: tx.accountId,
       categoryExternalId: tx.categoryId || null,
@@ -466,15 +467,16 @@ export function parseMoneyMatterZip(zipBuffer: Buffer): ImportPreview {
   for (const tx of normalTxs) {
     if (tx.transferNature !== 'not_transfer') continue;
     const date = convertUtcToMadridDate(tx.time);
-    const amount = Math.abs(tx.amount / 100);
     const type = tx.transactionType === 'expense' ? 'gasto' : 'ingreso';
-    if (type === 'gasto') totalExpenses += amount;
-    else totalIncome += amount;
+    const rawAmount = Math.abs(tx.amount / 100);
+    const signedAmount = type === 'gasto' ? -rawAmount : rawAmount;
+    if (type === 'gasto') totalExpenses += rawAmount;
+    else totalIncome += rawAmount;
 
     parsedTransactions.push({
       externalId: tx.id,
       type,
-      amount,
+      amount: signedAmount,
       date,
       accountExternalId: tx.accountId,
       categoryExternalId: tx.categoryId || null,
@@ -555,8 +557,7 @@ export function parseMoneyMatterZip(zipBuffer: Buffer): ImportPreview {
     const transfersIn = parsedTransfers.filter(t => t.toAccountExternalId === a.externalId);
     let calculated = a.initialBalance;
     for (const t of accTxs) {
-      if (t.type === 'gasto') calculated -= t.amount;
-      else calculated += t.amount;
+      calculated += t.amount;
     }
     for (const t of transfersOut) calculated -= t.amount;
     for (const t of transfersIn) calculated += t.amount;

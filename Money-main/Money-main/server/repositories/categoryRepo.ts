@@ -6,6 +6,7 @@ export interface Category {
   color: string;
   icon: string | null;
   parent_id: number | null;
+  sort_order: number;
   created_at: string;
 }
 
@@ -17,14 +18,23 @@ function rowToCategory(row: any[]): Category {
     parent_id: row[3] as number | null,
     created_at: row[4] as string,
     icon: (row[5] as string | null) ?? null,
+    sort_order: (row[6] as number) ?? 0,
   };
 }
 
 export async function getAllCategories(): Promise<Category[]> {
   const db = await getDb();
-  const result = db.exec(`SELECT id, name, color, parent_id, created_at, icon FROM categories ORDER BY parent_id IS NULL DESC, parent_id, name`);
+  const result = db.exec(`SELECT id, name, color, parent_id, created_at, icon, sort_order FROM categories ORDER BY sort_order ASC, name ASC`);
   if (result.length === 0) return [];
   return result[0].values.map(rowToCategory);
+}
+
+export async function reorderCategories(orderedIds: number[]): Promise<void> {
+  const db = await getDb();
+  for (let i = 0; i < orderedIds.length; i++) {
+    db.run(`UPDATE categories SET sort_order = ? WHERE id = ?`, [i, orderedIds[i]]);
+  }
+  scheduleSave();
 }
 
 export async function createCategory(data: { name: string; color: string; icon?: string | null; parent_id?: number | null }): Promise<number> {

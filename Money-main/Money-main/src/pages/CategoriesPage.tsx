@@ -7,7 +7,7 @@ import { formatEUR, formatDate, formatAxisEUR } from '@/lib/format';
 import { ICON_LIST, getIcon, suggestIcon, COLOR_PALETTE } from '@/lib/categoryIcons';
 import {
   Plus, Trash2, Edit3, ChevronDown, ChevronRight, Search, X, AlertTriangle,
-  FolderPlus, ArrowLeft, Check,
+  FolderPlus, ArrowLeft, Check, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, ResponsiveContainer, Tooltip,
@@ -37,6 +37,55 @@ export function CategoriesPage() {
 
   const parents = useMemo(() => categories.filter(c => c.parent_id === null), [categories]);
   const childrenOf = (pid: number) => categories.filter(c => c.parent_id === pid);
+
+  const moveParent = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= parents.length) return;
+    const newParents = [...parents];
+    const [moved] = newParents.splice(index, 1);
+    newParents.splice(targetIndex, 0, moved);
+
+    // Build complete ordered IDs list preserving children relative positions
+    const orderedIds: number[] = [];
+    for (const p of newParents) {
+      orderedIds.push(p.id);
+      for (const child of childrenOf(p.id)) {
+        orderedIds.push(child.id);
+      }
+    }
+
+    try {
+      await api.reorderCategories(orderedIds);
+      load();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const moveChild = async (parentId: number, childIndex: number, direction: 'up' | 'down') => {
+    const siblings = childrenOf(parentId);
+    const targetIndex = direction === 'up' ? childIndex - 1 : childIndex + 1;
+    if (targetIndex < 0 || targetIndex >= siblings.length) return;
+    const newSiblings = [...siblings];
+    const [moved] = newSiblings.splice(childIndex, 1);
+    newSiblings.splice(targetIndex, 0, moved);
+
+    const orderedIds: number[] = [];
+    for (const p of parents) {
+      orderedIds.push(p.id);
+      const currentChildren = p.id === parentId ? newSiblings : childrenOf(p.id);
+      for (const child of currentChildren) {
+        orderedIds.push(child.id);
+      }
+    }
+
+    try {
+      await api.reorderCategories(orderedIds);
+      load();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
 
   const toggleExpand = (id: number) => {
     setExpanded(prev => {
@@ -102,7 +151,7 @@ export function CategoriesPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredParents.map((parent) => {
+          {filteredParents.map((parent, parentIdx) => {
             const subs = childrenOf(parent.id);
             const isExpanded = expanded.has(parent.id) || (!!search && subs.length > 0);
             const Icon = getIcon(parent.icon) || getIcon(suggestIcon(parent.name));
@@ -124,6 +173,26 @@ export function CategoriesPage() {
                     </button>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {!search && (
+                      <div className="flex items-center mr-1 bg-slate-800/80 rounded border border-slate-700/50">
+                        <button
+                          onClick={() => moveParent(parentIdx, 'up')}
+                          disabled={parentIdx === 0}
+                          className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                          title="Subir grupo"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveParent(parentIdx, 'down')}
+                          disabled={parentIdx === parents.length - 1}
+                          className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                          title="Bajar grupo"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                     <button onClick={() => setEditing(parent)} className="text-slate-500 hover:text-blue-400 transition-colors p-1" title="Editar">
                       <Edit3 className="w-4 h-4" />
                     </button>
@@ -134,7 +203,7 @@ export function CategoriesPage() {
                 </div>
                 {isExpanded && subs.length > 0 && (
                   <div className="border-t border-slate-800">
-                    {subs.map((sub) => {
+                    {subs.map((sub, subIdx) => {
                       const SubIcon = getIcon(sub.icon) || getIcon(suggestIcon(sub.name));
                       return (
                         <div key={sub.id} className="flex items-center justify-between px-5 py-2.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-800/30 transition-colors">
@@ -144,6 +213,26 @@ export function CategoriesPage() {
                             <span className="text-slate-300 text-sm truncate">{sub.name}</span>
                           </button>
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {!search && (
+                              <div className="flex items-center mr-1 bg-slate-800/60 rounded border border-slate-700/40">
+                                <button
+                                  onClick={() => moveChild(parent.id, subIdx, 'up')}
+                                  disabled={subIdx === 0}
+                                  className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                                  title="Subir subcategoría"
+                                >
+                                  <ArrowUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => moveChild(parent.id, subIdx, 'down')}
+                                  disabled={subIdx === subs.length - 1}
+                                  className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                                  title="Bajar subcategoría"
+                                >
+                                  <ArrowDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                             <button onClick={() => setEditing(sub)} className="text-slate-500 hover:text-blue-400 transition-colors p-1">
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>

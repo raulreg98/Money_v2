@@ -574,6 +574,14 @@ async function main() {
     res.json(await categoryRepo.getAllCategories());
   });
 
+  app.post('/api/categories/reorder', async (req, res) => {
+    const schema = z.object({ ids: z.array(z.number()) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos' });
+    await categoryRepo.reorderCategories(parsed.data.ids);
+    res.json({ ok: true });
+  });
+
   app.post('/api/categories', async (req, res) => {
     const schema = z.object({ name: z.string().min(1), color: z.string().default('#6b7280'), icon: z.string().nullable().optional(), parent_id: z.number().nullable().optional() });
     const parsed = schema.safeParse(req.body);

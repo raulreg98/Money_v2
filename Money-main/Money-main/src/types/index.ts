@@ -91,6 +91,7 @@ export interface Category {
   color: string;
   icon: string | null;
   parent_id: number | null;
+  sort_order?: number;
   created_at: string;
 }
 

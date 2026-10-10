@@ -206,4 +206,10 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE products ADD COLUMN account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL;
     `,
   },
+  {
+    version: 9,
+    sql: `
+      ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
