@@ -1147,7 +1147,7 @@ async function main() {
     const latestPrice = prices.length > 0 ? prices[0] : null;
     const latestValuation = valuations.length > 0 ? valuations[valuations.length - 1] : null;
 
-    const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
+    const isPriced = ['renta_variable', 'fondo_monetario', 'cripto', 'materia_prima', 'accion', 'fondo', 'etf', 'bono'].includes(product.type);
     let currentValue = 0;
     let hasPrice = false;
     let estimated = false;
