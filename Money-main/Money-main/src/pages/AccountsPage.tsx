@@ -654,7 +654,16 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                           {t.note || '—'}
                           {toAccName && <span className="text-slate-600"> → {toAccName}</span>}
                         </td>
-                        <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
+                        <td className="px-5 py-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTx(t)}
+                            className="hover:opacity-80 transition-opacity text-left"
+                            title="Cambiar categoría"
+                          >
+                            <CategoryBadge category={catById(t.category_id)} size="xs" />
+                          </button>
+                        </td>
                         <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                         <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
                         <td className="px-5 py-2.5 text-right">
@@ -718,6 +727,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
             return name === selectedCatName;
           })}
           accounts={accList}
+          categories={categories}
           onClose={() => setSelectedCatName(null)}
         />
       )}
@@ -728,10 +738,11 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   );
 }
 
-function CategoryTransactionsModal({ categoryName, transactions, accounts, onClose }: {
+function CategoryTransactionsModal({ categoryName, transactions, accounts, categories, onClose }: {
   categoryName: string;
   transactions: Transaction[];
   accounts: Account[];
+  categories: Category[];
   onClose: () => void;
 }) {
   const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
@@ -751,15 +762,25 @@ function CategoryTransactionsModal({ categoryName, transactions, accounts, onClo
           {transactions.length === 0 ? (
             <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
           ) : (
-            transactions.map(t => (
-              <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
-                <div>
-                  <p className="text-white text-sm font-medium">{t.note || 'Sin nota'}</p>
-                  <p className="text-slate-400 text-xs">{formatDate(t.date)} · {accName(t.account_id)}</p>
+            transactions.map(t => {
+              const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
+              const catColor = cat?.color || '#3b82f6';
+              return (
+                <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: catColor }} />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CategoryBadge category={cat} size="xs" />
+                        {t.note && <span className="text-slate-400 text-xs">({t.note})</span>}
+                      </div>
+                      <p className="text-slate-400 text-xs mt-0.5">{formatDate(t.date)} · {accName(t.account_id)}</p>
+                    </div>
+                  </div>
+                  <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
                 </div>
-                <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">

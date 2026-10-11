@@ -339,9 +339,11 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatY} domain={metric === 'area_stacked_pct' ? [0, 100] : ['auto', 'auto']} />
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
-                itemStyle={{ color: '#ffffff' }}
                 labelStyle={{ color: '#cbd5e1' }}
-                formatter={(v: any, name: any) => [formatTooltip(v), name]}
+                formatter={(v: any, name: any, item: any) => [
+                  <span key="val" style={{ color: item?.color || item?.fill || '#ffffff', fontWeight: 600 }}>{formatTooltip(v)}</span>,
+                  name
+                ]}
               />
               <Legend
                 onClick={(e: any) => toggleLegend(e.dataKey)}
@@ -370,9 +372,11 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatY} domain={['auto', 'auto']} />
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
-                itemStyle={{ color: '#ffffff' }}
                 labelStyle={{ color: '#cbd5e1' }}
-                formatter={(v: any, name: any) => [formatTooltip(v), name]}
+                formatter={(v: any, name: any, item: any) => [
+                  <span key="val" style={{ color: item?.color || item?.stroke || '#ffffff', fontWeight: 600 }}>{formatTooltip(v)}</span>,
+                  name
+                ]}
               />
               <Legend
                 onClick={(e: any) => toggleLegend(e.dataKey)}
