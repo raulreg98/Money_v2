@@ -351,7 +351,12 @@ async function main() {
     if (desde) filtered = filtered.filter(t => t.date >= desde);
     if (hasta) filtered = filtered.filter(t => t.date <= hasta);
     if (tipoFiltro) filtered = filtered.filter(t => t.type === tipoFiltro);
-    if (catFiltro) filtered = filtered.filter(t => t.category_id === parseInt(catFiltro));
+    if (catFiltro) {
+      const catId = parseInt(catFiltro);
+      const childIds = await categoryRepo.getChildCategoryIds(catId);
+      const allCatIds = new Set([catId, ...childIds]);
+      filtered = filtered.filter(t => t.category_id && allCatIds.has(t.category_id));
+    }
     if (tagFiltro) {
       filtered = filtered.filter(t => {
         if (!t.tags) return false;
@@ -949,7 +954,12 @@ async function main() {
       }
       let entries = Array.from(map.entries()).map(([name, value]) => {
         const cat = categories.find(c => c.name === name);
-        return { name, value, color: cat?.color || '#6b7280', icon: cat?.icon || null };
+        let color = cat?.color;
+        if (!color && cat?.parent_id) {
+          const parent = catMap.get(cat.parent_id);
+          color = parent?.color;
+        }
+        return { name, value, color: color || '#6b7280', icon: cat?.icon || null };
       });
       entries.sort((a, b) => b.value - a.value);
       if (cfg.top_n && cfg.top_n > 0 && entries.length > cfg.top_n) {

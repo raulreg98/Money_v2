@@ -37,6 +37,8 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
   const childrenOf = (pid: number) => categories.filter(c => c.parent_id === pid);
 
   const selectedCat = value ? categories.find(c => c.id === parseInt(value)) : null;
+  const parentOfSelected = selectedCat?.parent_id ? categories.find(c => c.id === selectedCat.parent_id) : null;
+  const selectedColor = selectedCat?.color || parentOfSelected?.color || '#3b82f6';
   const SelectedIcon = getIcon(selectedCat?.icon) || getIcon(suggestIcon(selectedCat?.name || ''));
 
   const filtered = (cats: Category[]) => {
@@ -71,8 +73,8 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
       >
         {selectedCat ? (
           <div className="flex items-center gap-2 truncate">
-            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: selectedCat.color || '#3b82f6' }} />
-            {SelectedIcon && <SelectedIcon className="w-4 h-4 shrink-0" style={{ color: selectedCat.color || '#3b82f6' }} />}
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: selectedColor }} />
+            {SelectedIcon && <SelectedIcon className="w-4 h-4 shrink-0" style={{ color: selectedColor }} />}
             <span className="text-slate-200 truncate">{selectedCat.name}</span>
           </div>
         ) : (
@@ -176,11 +178,12 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
   );
 }
 
-export function CategoryBadge({ category, size = 'sm' }: { category: Category | null | undefined; size?: 'xs' | 'sm' }) {
+export function CategoryBadge({ category, categories, size = 'sm' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
   if (!category) return <span className="text-slate-600 text-sm">—</span>;
   const Icon = getIcon(category.icon) || getIcon(suggestIcon(category.name));
   const cls = size === 'xs' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  const color = category.color || '#3b82f6';
+  const parentCat = (category.parent_id && categories) ? categories.find(c => c.id === category.parent_id) : null;
+  const color = category.color || parentCat?.color || '#3b82f6';
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border"
