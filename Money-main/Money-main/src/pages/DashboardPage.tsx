@@ -46,13 +46,18 @@ export function DashboardPage() {
   }, [transactions, accountFilter]);
 
   const categoryChartData = useMemo(() => {
-    const map = new Map<string, { name: string; value: number; color: string }>();
+    const map = new Map<string, { name: string; value: number; color: string; icon?: string | null }>();
     const filteredExpenses = filteredTransactions.filter(t => t.type === 'gasto');
     for (const t of filteredExpenses) {
       const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
-      const name = cat ? cat.name : 'Sin categoría';
-      const color = cat?.color || '#6b7280';
-      const existing = map.get(name) || { name, value: 0, color };
+      let parentCat = cat;
+      if (cat && cat.parent_id) {
+        parentCat = categories.find(c => c.id === cat.parent_id) || cat;
+      }
+      const name = parentCat ? parentCat.name : 'Sin categoría';
+      const color = parentCat?.color || '#6b7280';
+      const icon = parentCat?.icon || null;
+      const existing = map.get(name) || { name, value: 0, color, icon };
       existing.value += Math.abs(t.amount);
       map.set(name, existing);
     }
@@ -336,7 +341,11 @@ export function DashboardPage() {
           transactions={filteredTransactions.filter(t => {
             if (t.type !== 'gasto') return false;
             const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
-            const name = cat ? cat.name : 'Sin categoría';
+            let parentCat = cat;
+            if (cat && cat.parent_id) {
+              parentCat = categories.find(c => c.id === cat.parent_id) || cat;
+            }
+            const name = parentCat ? parentCat.name : 'Sin categoría';
             return name === selectedCatName;
           })}
           accounts={accounts}
