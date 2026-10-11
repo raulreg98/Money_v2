@@ -269,7 +269,7 @@ async function main() {
           const fifo = computeFifo(movements as any);
           const latestPrice = latestPrices.get(product.id);
           const latestValuation = latestValuations.get(product.id);
-          const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
+          const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono', 'fondo_monetario', 'renta_variable'].includes(product.type);
           let value = 0;
           if (isPriced) {
             value = latestPrice ? fifo.remainingUnits * latestPrice.price : 0;
@@ -453,7 +453,7 @@ async function main() {
         const fifo = computeFifo(movements as any);
         const latestPrice = latestPrices.get(product.id);
         const latestValuation = latestValuations.get(product.id);
-        const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
+        const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono', 'fondo_monetario', 'renta_variable'].includes(product.type);
         let value = 0;
         if (isPriced) {
           value = latestPrice ? fifo.remainingUnits * latestPrice.price : 0;
@@ -1064,7 +1064,7 @@ async function main() {
       let pricePerUnit: number | null = null;
       let priceDate: string | null = null;
       let priceSource: string | null = null;
-      const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
+      const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono', 'fondo_monetario', 'renta_variable'].includes(product.type);
       if (isPriced) {
         if (latestPrice) {
           pricePerUnit = latestPrice.price;
