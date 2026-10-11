@@ -12,11 +12,12 @@ interface ProductEvolutionChartProps {
 }
 
 type Metric = 'valor' | 'rentabilidad' | 'pure_return' | 'pure_return_percent' | 'area_stacked_eur' | 'area_stacked_pct';
-type Period = '1M' | '3M' | '6M' | '1A' | 'TODO' | 'CUSTOM';
+type Period = '1M' | '3M' | '6M' | '1A' | '3A' | '5A' | 'TODO' | 'CUSTOM';
 
 const PERIODS: { id: Period; label: string }[] = [
   { id: '1M', label: '1M' }, { id: '3M', label: '3M' }, { id: '6M', label: '6M' },
-  { id: '1A', label: '1A' }, { id: 'TODO', label: 'Todo' }, { id: 'CUSTOM', label: 'Personalizado' },
+  { id: '1A', label: '1A' }, { id: '3A', label: '3A' }, { id: '5A', label: '5A' },
+  { id: 'TODO', label: 'Todo' }, { id: 'CUSTOM', label: 'Personalizado' },
 ];
 
 function periodToRange(period: Period): { desde: string; hasta: string } | null {
@@ -28,7 +29,9 @@ function periodToRange(period: Period): { desde: string; hasta: string } | null 
     case '3M': d.setMonth(d.getMonth() - 3); break;
     case '6M': d.setMonth(d.getMonth() - 6); break;
     case '1A': d.setFullYear(d.getFullYear() - 1); break;
-    case 'TODO': return { desde: '2000-01-01', hasta };
+    case '3A': d.setFullYear(d.getFullYear() - 3); break;
+    case '5A': d.setFullYear(d.getFullYear() - 5); break;
+    case 'TODO': return { desde: '1970-01-01', hasta };
   }
   return { desde: d.toISOString().slice(0, 10), hasta };
 }
