@@ -3,10 +3,11 @@ import { api } from '@/lib/api';
 import type { Account, Transaction, Category } from '@/types';
 import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
-import { formatEUR, formatDate, formatAxisEUR, formatAxisDate, formatUnits, ACCOUNT_TYPES, CHART_COLORS } from '@/lib/format';
+import { CategoryExpensesChart } from '@/components/CategoryExpensesChart';
+import { formatEUR, formatDate, formatAxisEUR, formatAxisDate, formatUnits, ACCOUNT_TYPES } from '@/lib/format';
 import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X, Landmark } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, BarChart, Bar,
   ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid,
 } from 'recharts';
 
@@ -451,26 +452,15 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           )}
         </Card>
 
-        {/* Gastos por categoría */}
-        <Card className="p-5">
-          <h2 className="text-white font-semibold mb-4">Gastos por categoría</h2>
-          {donutData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} className="cursor-pointer">
-                  {donutData.map((entry: any, i: number) => (
-                    <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => setSelectedCatName(entry.name)} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => formatEUR(Number(v))} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-slate-500 text-sm text-center py-12">Sin gastos para mostrar</p>
-          )}
-          {donutTotal > 0 && <p className="text-slate-400 text-sm text-center mt-2">Total: {formatEUR(donutTotal)}</p>}
-        </Card>
+        {/* Gastos por categoría unificado */}
+        <CategoryExpensesChart
+          title="Gastos por categoría"
+          transactions={transactions}
+          categories={categories}
+          accounts={accList}
+          accountId={accountId}
+          dateRange={periodToRange(period)}
+        />
       </div>
 
       {/* Investment products */}
@@ -526,10 +516,14 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
               <option value="transferencia">Transferencia</option>
             </select>
             {categories.length > 0 && (
-              <select value={txCat} onChange={(e) => setTxCat(e.target.value)} className="bg-slate-800 text-slate-300 text-sm rounded-lg px-3 py-2 border border-slate-700 focus:border-blue-500 outline-none">
-                <option value="">Categoría</option>
-                {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="min-w-[160px]">
+                <CategorySelector
+                  categories={categories}
+                  value={txCat}
+                  onChange={setTxCat}
+                  allowEmpty
+                />
+              </div>
             )}
           </div>
           {/* Bulk category change */}
@@ -713,80 +707,9 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <p className="text-slate-400 text-xs mt-1">Se creará una transacción de ingreso o gasto por la diferencia para ajustar el saldo real.</p>
         </Modal>
       )}
-      {selectedCatName && (
-        <CategoryTransactionsModal
-          categoryName={selectedCatName}
-          transactions={transactions.filter((t: Transaction) => {
-            if (t.type !== 'gasto') return false;
-            const cat = t.category_id ? categories.find((c: any) => c.id === t.category_id) : null;
-            let parentCat = cat;
-            if (cat && cat.parent_id) {
-              parentCat = categories.find((c: any) => c.id === cat.parent_id) || cat;
-            }
-            const name = parentCat ? parentCat.name : 'Sin categoría';
-            return name === selectedCatName;
-          })}
-          accounts={accList}
-          categories={categories}
-          onClose={() => setSelectedCatName(null)}
-        />
-      )}
       {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
       {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
       {editingAccount && <EditAccountModal account={account} onClose={() => { setEditingAccount(false); loadSummary(); }} />}
-    </div>
-  );
-}
-
-function CategoryTransactionsModal({ categoryName, transactions, accounts, categories, onClose }: {
-  categoryName: string;
-  transactions: Transaction[];
-  accounts: Account[];
-  categories: Category[];
-  onClose: () => void;
-}) {
-  const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
-  const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div>
-            <h2 className="text-white font-semibold text-lg">{categoryName}</h2>
-            <p className="text-slate-400 text-xs mt-0.5">Total gastado: <span className="text-red-400 font-bold">{formatEUR(total)}</span> ({transactions.length} movimientos)</p>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
-        </div>
-        <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-          {transactions.length === 0 ? (
-            <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
-          ) : (
-            transactions.map(t => {
-              const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
-              const catColor = cat?.color || '#3b82f6';
-              return (
-                <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: catColor }} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <CategoryBadge category={cat} size="xs" />
-                        {t.note && <span className="text-slate-400 text-xs">({t.note})</span>}
-                      </div>
-                      <p className="text-slate-400 text-xs mt-0.5">{formatDate(t.date)} · {accName(t.account_id)}</p>
-                    </div>
-                  </div>
-                  <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">
-          Cerrar
-        </button>
-      </div>
     </div>
   );
 }

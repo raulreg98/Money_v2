@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import type { ChartWidget, Transaction, Account, Category } from '@/types';
 import { Card } from '@/components/Card';
+import { CategoryExpensesChart, ExpenseCategoryModal, getCategoryTransactions } from '@/components/CategoryExpensesChart';
 import { formatEUR, formatAxisEUR, CHART_COLORS } from '@/lib/format';
 import {
   Plus, Trash2, Pin, PinOff, Edit3, Copy, ArrowUp, ArrowDown,
@@ -646,6 +647,12 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
     });
   }, [selectedCategory, transactions, accountFilter, categories]);
 
+  const modalTransactions = useMemo(() => {
+    if (!selectedCategory) return [];
+    const accId = accountFilter ? parseInt(accountFilter) : null;
+    return getCategoryTransactions(transactions, categories, selectedCategory, null, accId);
+  }, [selectedCategory, transactions, categories, accountFilter]);
+
   return (
     <div>
       <div className="flex items-center justify-end gap-2 mb-2">
@@ -670,67 +677,14 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
       )}
 
       {selectedCategory && (
-        <CategoryTransactionsModal
+        <ExpenseCategoryModal
           categoryName={selectedCategory}
-          transactions={filteredModalTx}
+          transactions={modalTransactions}
           accounts={accounts}
           categories={categories}
           onClose={() => setSelectedCategory(null)}
         />
       )}
-    </div>
-  );
-}
-
-function CategoryTransactionsModal({ categoryName, transactions, accounts, categories, onClose }: {
-  categoryName: string;
-  transactions: Transaction[];
-  accounts: Account[];
-  categories: Category[];
-  onClose: () => void;
-}) {
-  const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
-  const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center px-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div>
-            <h2 className="text-white font-semibold text-lg">{categoryName}</h2>
-            <p className="text-slate-400 text-xs mt-0.5">Total gastado: <span className="text-red-400 font-bold">{formatEUR(total)}</span> ({transactions.length} movimientos)</p>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
-        </div>
-        <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-          {transactions.length === 0 ? (
-            <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
-          ) : (
-            transactions.map(t => {
-              const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
-              const catColor = cat?.color || '#3b82f6';
-              return (
-                <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: catColor }} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white text-sm font-medium">{cat?.name || '—'}</span>
-                        {t.note && <span className="text-slate-400 text-xs">({t.note})</span>}
-                      </div>
-                      <p className="text-slate-400 text-xs mt-0.5">{t.date} · {accName(t.account_id)}</p>
-                    </div>
-                  </div>
-                  <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">
-          Cerrar
-        </button>
-      </div>
     </div>
   );
 }

@@ -182,10 +182,16 @@ export function CategoryBadge({ category, size = 'sm' }: { category: Category | 
   const cls = size === 'xs' ? 'w-3.5 h-3.5' : 'w-4 h-4';
   const color = category.color || '#3b82f6';
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border"
+      style={{
+        backgroundColor: `${color}18`,
+        borderColor: `${color}40`,
+      }}
+    >
       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
       {Icon && <Icon className={`${cls} shrink-0`} style={{ color }} />}
-      <span className="text-slate-300 text-sm">{category.name}</span>
+      <span className="text-sm font-medium" style={{ color }}>{category.name}</span>
     </span>
   );
 }
