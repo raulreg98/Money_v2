@@ -21,6 +21,7 @@ export interface Product {
   country_breakdown: string | null;
   sector_breakdown: string | null;
   top_holdings: string | null;
+  alias: string | null;
 }
 
 export interface Movement {
@@ -186,6 +187,23 @@ export interface ComparatorResult {
   sharpe: number;
   maxDrawdown: number;
   series: { date: string; value: number }[];
+}
+
+export interface AccountSummary {
+  account: Account;
+  balance: number;
+  investedValue?: number;
+  totalBalance?: number;
+  transactions: Transaction[];
+  totalCount: number;
+  accounts: { id: number; name: string }[];
+  categories: Category[];
+  tags: Tag[];
+  balanceSeries: { date: string; balance: number }[];
+  monthlyBars: { month: string; ingresos: number; gastos: number }[];
+  gastosPorCategoria: { name: string; value: number; color: string; icon: string | null }[];
+  gastosPorTag: { name: string; value: number }[];
+  investmentProducts: any[];
 }
 
 export interface DashboardData {
