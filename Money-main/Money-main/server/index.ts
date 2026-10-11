@@ -1550,9 +1550,15 @@ async function main() {
         const movements = await movementRepo.getMovementsByProduct(pid);
         const prices = await priceRepo.getPriceHistory(pid, 5000);
 
-        const firstMovementDate = movements.length > 0
+        let firstMovementDate = movements.length > 0
           ? movements.reduce((min, m) => m.date < min ? m.date : min, movements[0].date)
-          : new Date().toISOString().slice(0, 10);
+          : '';
+
+        if (!firstMovementDate) {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() - 1);
+          firstMovementDate = d.toISOString().slice(0, 10);
+        }
 
         const fromDate = desde || firstMovementDate;
         const toDate = hasta;

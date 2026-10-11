@@ -31,7 +31,7 @@ function periodToRange(period: Period): { desde: string; hasta: string } | null 
     case '1A': d.setFullYear(d.getFullYear() - 1); break;
     case '3A': d.setFullYear(d.getFullYear() - 3); break;
     case '5A': d.setFullYear(d.getFullYear() - 5); break;
-    case 'TODO': return { desde: '1970-01-01', hasta };
+    case 'TODO': return { desde: '', hasta };
   }
   return { desde: d.toISOString().slice(0, 10), hasta };
 }
