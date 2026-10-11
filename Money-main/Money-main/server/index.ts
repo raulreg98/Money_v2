@@ -78,6 +78,11 @@ async function main() {
     manual_price: z.number().optional(), long_term: z.number().optional(),
     alt_source: z.string().nullable().optional(), alt_symbol: z.string().nullable().optional(),
     account_id: z.number().nullable().optional(),
+    alias: z.string().nullable().optional(),
+    color: z.string().nullable().optional(),
+    country_breakdown: z.string().nullable().optional(),
+    sector_breakdown: z.string().nullable().optional(),
+    top_holdings: z.string().nullable().optional(),
   });
 
   app.post('/api/products', async (req, res) => {
@@ -397,9 +402,10 @@ async function main() {
       balanceSeries.push({ date, balance: runningBalance });
     }
 
-    // Ingresos vs gastos por mes
+    // Ingresos vs gastos por mes (filtrados por fecha)
     const monthMap = new Map<string, { ingresos: number; gastos: number }>();
-    for (const t of allTx.filter(t => t.account_id === accountId)) {
+    for (const t of filtered) {
+      if (t.account_id !== accountId) continue;
       const month = t.date.slice(0, 7);
       if (!monthMap.has(month)) monthMap.set(month, { ingresos: 0, gastos: 0 });
       const entry = monthMap.get(month)!;
@@ -410,13 +416,18 @@ async function main() {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([month, v]) => ({ month, ...v }));
 
-    // Gastos por categoría y por tag
+    // Gastos por categoría y por tag (filtrados por fecha)
     const catMap = new Map<string, number>();
     const tagMap = new Map<string, number>();
-    for (const t of allTx.filter(t => t.account_id === accountId && t.type === 'gasto')) {
+    for (const t of filtered) {
+      if (t.account_id !== accountId || t.type !== 'gasto') continue;
       if (t.category_id) {
         const cat = categories.find(c => c.id === t.category_id);
-        const name = cat?.name || `Cat #${t.category_id}`;
+        let parentCat = cat;
+        if (cat && cat.parent_id) {
+          parentCat = categories.find(c => c.id === cat.parent_id) || cat;
+        }
+        const name = parentCat ? parentCat.name : 'Sin categoría';
         catMap.set(name, (catMap.get(name) || 0) + Math.abs(t.amount));
       }
       if (t.tags) {
