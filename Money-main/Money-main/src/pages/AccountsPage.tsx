@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import type { Account, Transaction, Category } from '@/types';
 import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
-import { formatEUR, formatDate, formatAxisEUR, formatUnits, ACCOUNT_TYPES, CHART_COLORS } from '@/lib/format';
+import { formatEUR, formatDate, formatAxisEUR, formatAxisDate, formatUnits, ACCOUNT_TYPES, CHART_COLORS } from '@/lib/format';
 import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X, Landmark } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -198,16 +198,17 @@ function AccountSection({ title, subtotal, accounts, accountBalance, onSelect, o
 
 // ===================== DETAIL VIEW =====================
 
-type Period = '3M' | '6M' | '1A' | 'TODO';
+type Period = '1M' | '3M' | '6M' | '1A' | 'TODO';
 
 const PERIODS: { id: Period; label: string }[] = [
-  { id: '3M', label: '3M' }, { id: '6M', label: '6M' }, { id: '1A', label: '1A' }, { id: 'TODO', label: 'Todo' },
+  { id: '1M', label: '1M' }, { id: '3M', label: '3M' }, { id: '6M', label: '6M' }, { id: '1A', label: '1A' }, { id: 'TODO', label: 'Todo' },
 ];
 
 function periodToRange(period: Period): { desde: string; hasta: string } {
   const hasta = new Date().toISOString().slice(0, 10);
   const d = new Date();
   if (period === 'TODO') return { desde: '2000-01-01', hasta };
+  if (period === '1M') d.setMonth(d.getMonth() - 1);
   if (period === '3M') d.setMonth(d.getMonth() - 3);
   if (period === '6M') d.setMonth(d.getMonth() - 6);
   if (period === '1A') d.setFullYear(d.getFullYear() - 1);
@@ -232,6 +233,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const [showAdjustBalance, setShowAdjustBalance] = useState(false);
   const [targetBalance, setTargetBalance] = useState('');
   const [adjusting, setAdjusting] = useState(false);
+  const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
 
   const loadSummary = () => {
     const { desde, hasta } = periodToRange(period);
@@ -412,7 +414,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={balanceSeries} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
+              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisDate} minTickGap={40} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} domain={['auto', 'auto']} />
               <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#94a3b8' }} formatter={(v: any) => [formatEUR(Number(v)), 'Saldo']} />
               <Line type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={2} dot={false} />
@@ -450,8 +452,10 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           {donutData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45}>
-                  {donutData.map((entry: any, i: number) => <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />)}
+                <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} className="cursor-pointer">
+                  {donutData.map((entry: any, i: number) => (
+                    <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => setSelectedCatName(entry.name)} />
+                  ))}
                 </Pie>
                 <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => formatEUR(Number(v))} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -695,9 +699,68 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <p className="text-slate-400 text-xs mt-1">Se creará una transacción de ingreso o gasto por la diferencia para ajustar el saldo real.</p>
         </Modal>
       )}
+      {selectedCatName && (
+        <CategoryTransactionsModal
+          categoryName={selectedCatName}
+          transactions={transactions.filter((t: Transaction) => {
+            if (t.type !== 'gasto') return false;
+            const cat = t.category_id ? categories.find((c: any) => c.id === t.category_id) : null;
+            let parentCat = cat;
+            if (cat && cat.parent_id) {
+              parentCat = categories.find((c: any) => c.id === cat.parent_id) || cat;
+            }
+            const name = parentCat ? parentCat.name : 'Sin categoría';
+            return name === selectedCatName;
+          })}
+          accounts={accList}
+          onClose={() => setSelectedCatName(null)}
+        />
+      )}
       {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
       {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
       {editingAccount && <EditAccountModal account={account} onClose={() => { setEditingAccount(false); loadSummary(); }} />}
+    </div>
+  );
+}
+
+function CategoryTransactionsModal({ categoryName, transactions, accounts, onClose }: {
+  categoryName: string;
+  transactions: Transaction[];
+  accounts: Account[];
+  onClose: () => void;
+}) {
+  const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
+  const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h2 className="text-white font-semibold text-lg">{categoryName}</h2>
+            <p className="text-slate-400 text-xs mt-0.5">Total gastado: <span className="text-red-400 font-bold">{formatEUR(total)}</span> ({transactions.length} movimientos)</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+        </div>
+        <div className="overflow-y-auto flex-1 space-y-2 pr-1">
+          {transactions.length === 0 ? (
+            <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
+          ) : (
+            transactions.map(t => (
+              <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+                <div>
+                  <p className="text-white text-sm font-medium">{t.note || 'Sin nota'}</p>
+                  <p className="text-slate-400 text-xs">{formatDate(t.date)} · {accName(t.account_id)}</p>
+                </div>
+                <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">
+          Cerrar
+        </button>
+      </div>
     </div>
   );
 }

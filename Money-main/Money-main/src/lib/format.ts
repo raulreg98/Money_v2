@@ -95,6 +95,16 @@ export function monthName(month: number): string {
   return names[month] || '';
 }
 
+export function formatAxisDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const day = parts[2].slice(0, 2);
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const monthAbbr = monthName(monthIdx).toUpperCase();
+  return `${day} ${monthAbbr}`;
+}
+
 export function monthNameFull(month: number): string {
   const names = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   return names[month] || '';
