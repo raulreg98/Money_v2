@@ -42,7 +42,7 @@ export function AppLayout({ current, onNavigate, children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div className="min-h-screen bg-slate-950 flex max-w-[100vw] overflow-x-hidden">
       {/* Sidebar desktop */}
       <aside className="hidden md:flex w-60 flex-col bg-slate-900 border-r border-slate-800 fixed inset-y-0 left-0 z-30">
         <SidebarContent current={current} onNavigate={handleNav} />
@@ -59,7 +59,7 @@ export function AppLayout({ current, onNavigate, children }: LayoutProps) {
       )}
 
       {/* Main */}
-      <div className="flex-1 md:ml-60 flex flex-col min-h-screen pb-20 md:pb-0">
+      <div className="flex-1 md:ml-60 flex flex-col min-h-screen pb-20 md:pb-0 min-w-0 max-w-full">
         <header className="md:hidden sticky top-0 z-20 bg-slate-900 border-b border-slate-800 px-4 h-14 flex items-center justify-between">
           <button onClick={() => setMobileOpen(!mobileOpen)} className="text-slate-300 hover:text-white">
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

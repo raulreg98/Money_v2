@@ -474,7 +474,7 @@ function WidgetWizard({ accounts, categories, editWidget, onClose }: {
 
 // ===================== PREVIEW CHART =====================
 
-function PreviewChart({ config, data, categories }: { config: WizardConfig; data: any; categories: Category[] }) {
+function PreviewChart({ config, data, categories, onCellClick }: { config: WizardConfig; data: any; categories: Category[]; onCellClick?: (catName: string) => void }) {
   const chartType = config.chart_type;
   const d = data.data || [];
   if (!d || d.length === 0) return <p className="text-slate-500 text-sm text-center py-12">Sin datos</p>;
@@ -494,7 +494,7 @@ function PreviewChart({ config, data, categories }: { config: WizardConfig; data
             label={config.show_values ? (e: any) => `${e.name || e.label}: ${formatEUR(e.value || e.gastos || 0, { compact: true })}` : false}
           >
             {d.map((entry: any, i: number) => (
-              <Cell key={i} fill={entry.color || catColors(entry.name || entry.label) || CHART_COLORS[i % CHART_COLORS.length]} />
+              <Cell key={i} fill={entry.color || catColors(entry.name || entry.label) || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => onCellClick?.(entry.name || entry.label)} className="cursor-pointer" />
             ))}
           </Pie>
           <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
@@ -572,7 +572,7 @@ function PreviewChart({ config, data, categories }: { config: WizardConfig; data
         {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
         <Bar dataKey={valKey} name={config.name || 'Valor'} fill={color} radius={[4, 4, 0, 0]}>
           {data.type === 'category' && d.map((entry: any, i: number) => (
-            <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />
+            <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => onCellClick?.(entry.name || entry.label)} className="cursor-pointer" />
           ))}
         </Bar>
       </BarChart>
@@ -588,21 +588,29 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
   const [error, setError] = useState('');
   const [period, setPeriod] = useState(widget.period);
   const [accountFilter, setAccountFilter] = useState(widget.account_filter || '');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     setLoading(true);
-    api.getGraficaDatos({
-      metric: widget.metric,
-      group_by: widget.group_by,
-      period,
-      custom_from: widget.custom_from,
-      custom_to: widget.custom_to,
-      account_filter: accountFilter || null,
-      category_filter: null,
-      chart_type: widget.chart_type,
-      top_n: null,
-    })
-      .then(setData)
+    Promise.all([
+      api.getGraficaDatos({
+        metric: widget.metric,
+        group_by: widget.group_by,
+        period,
+        custom_from: widget.custom_from,
+        custom_to: widget.custom_to,
+        account_filter: accountFilter || null,
+        category_filter: null,
+        chart_type: widget.chart_type,
+        top_n: null,
+      }),
+      api.getTransactions(),
+    ])
+      .then(([grafData, txs]) => {
+        setData(grafData);
+        setTransactions(txs);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [widget.id, widget.metric, widget.group_by, period, widget.custom_from, widget.custom_to, accountFilter, widget.chart_type]);
@@ -613,6 +621,30 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
     custom_to: widget.custom_to || '', account_filter: accountFilter,
     category_filter: '', top_n: 0, show_legend: true, show_values: false,
   };
+
+  const handleCellClick = (catName: string) => {
+    if (widget.group_by === 'categoria' || widget.group_by === 'categoria_principal') {
+      setSelectedCategory(catName);
+    }
+  };
+
+  const filteredModalTx = useMemo(() => {
+    if (!selectedCategory) return [];
+    return transactions.filter(t => {
+      if (t.type !== 'gasto') return false;
+      if (accountFilter) {
+        const accIds = accountFilter.split(',').map(Number);
+        if (!accIds.includes(t.account_id)) return false;
+      }
+      const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
+      let parentCat = cat;
+      if (cat && cat.parent_id) {
+        parentCat = categories.find(c => c.id === cat.parent_id) || cat;
+      }
+      const name = parentCat ? parentCat.name : 'Sin categoría';
+      return name === selectedCategory;
+    });
+  }, [selectedCategory, transactions, accountFilter, categories]);
 
   return (
     <div>
@@ -634,8 +666,59 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
       ) : !data || (data.data && data.data.length === 0) ? (
         <p className="text-slate-500 text-sm text-center py-8">Sin datos</p>
       ) : (
-        <PreviewChart config={config} data={data} categories={categories} />
+        <PreviewChart config={config} data={data} categories={categories} onCellClick={handleCellClick} />
       )}
+
+      {selectedCategory && (
+        <CategoryTransactionsModal
+          categoryName={selectedCategory}
+          transactions={filteredModalTx}
+          accounts={accounts}
+          onClose={() => setSelectedCategory(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CategoryTransactionsModal({ categoryName, transactions, accounts, onClose }: {
+  categoryName: string;
+  transactions: Transaction[];
+  accounts: Account[];
+  onClose: () => void;
+}) {
+  const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
+  const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h2 className="text-white font-semibold text-lg">{categoryName}</h2>
+            <p className="text-slate-400 text-xs mt-0.5">Total gastado: <span className="text-red-400 font-bold">{formatEUR(total)}</span> ({transactions.length} movimientos)</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+        </div>
+        <div className="overflow-y-auto flex-1 space-y-2 pr-1">
+          {transactions.length === 0 ? (
+            <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
+          ) : (
+            transactions.map(t => (
+              <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+                <div>
+                  <p className="text-white text-sm font-medium">{t.note || 'Sin nota'}</p>
+                  <p className="text-slate-400 text-xs">{t.date} · {accName(t.account_id)}</p>
+                </div>
+                <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">
+          Cerrar
+        </button>
+      </div>
     </div>
   );
 }
