@@ -4,6 +4,7 @@ import type { Category } from '@/types';
 import { getIcon, suggestIcon } from '@/lib/categoryIcons';
 import { api } from '@/lib/api';
 import { formatEUR } from '@/lib/format';
+import { getCategoryColor } from '@/lib/chartData';
 
 interface Props {
   categories: Category[];
@@ -37,8 +38,7 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
   const childrenOf = (pid: number) => categories.filter(c => c.parent_id === pid);
 
   const selectedCat = value ? categories.find(c => c.id === parseInt(value)) : null;
-  const parentOfSelected = selectedCat?.parent_id ? categories.find(c => c.id === selectedCat.parent_id) : null;
-  const selectedColor = selectedCat?.color || parentOfSelected?.color || '#3b82f6';
+  const selectedColor = getCategoryColor(selectedCat, categories);
   const SelectedIcon = getIcon(selectedCat?.icon) || getIcon(suggestIcon(selectedCat?.name || ''));
 
   const filtered = (cats: Category[]) => {
@@ -106,7 +106,7 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
               {parents.map((parent) => {
                 const Icon = getIcon(parent.icon) || getIcon(suggestIcon(parent.name));
                 const subs = filtered(childrenOf(parent.id));
-                const parentColor = parent.color || '#3b82f6';
+                const parentColor = getCategoryColor(parent, categories);
                 return (
                   <div key={parent.id} className="bg-slate-800/40 rounded-xl p-2 border border-slate-800 space-y-1">
                     <button
@@ -120,7 +120,7 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
                     </button>
                     {subs.map((sub) => {
                       const SubIcon = getIcon(sub.icon) || getIcon(suggestIcon(sub.name));
-                      const subColor = sub.color || parentColor;
+                      const subColor = getCategoryColor(sub, categories);
                       return (
                         <button
                           key={sub.id}
@@ -191,12 +191,11 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
   );
 }
 
-export function CategoryBadge({ category, categories, size = 'sm' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
+export function CategoryBadge({ category, categories = [], size = 'sm' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
   if (!category) return <span className="text-slate-600 text-sm">—</span>;
   const Icon = getIcon(category.icon) || getIcon(suggestIcon(category.name));
   const cls = size === 'xs' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  const parentCat = (category.parent_id && categories) ? categories.find(c => c.id === category.parent_id) : null;
-  const color = category.color || parentCat?.color || '#3b82f6';
+  const color = getCategoryColor(category, categories);
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border"

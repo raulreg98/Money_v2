@@ -3,6 +3,7 @@ import type { Category, Transaction, Account } from '@/types';
 import { Card } from '@/components/Card';
 import { CategoryBadge } from '@/components/CategorySelector';
 import { formatEUR, formatDate, formatAxisEUR, CHART_COLORS } from '@/lib/format';
+import { prepareCategoryExpensesChartData } from '@/lib/chartData';
 import { PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer, Tooltip, Legend, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -75,31 +76,7 @@ export function CategoryExpensesChart({
   const activeAccountId = selectedAccountFilter ? parseInt(selectedAccountFilter) : accountId;
 
   const chartData = useMemo(() => {
-    const map = new Map<string, { name: string; value: number; color: string; icon?: string | null }>();
-    const catMap = new Map<number, Category>(categories.map(c => [c.id, c]));
-
-    const filteredExpenses = transactions.filter(t => {
-      if (t.type !== 'gasto') return false;
-      if (activeAccountId && t.account_id !== activeAccountId && t.to_account_id !== activeAccountId) return false;
-      if (dateRange?.desde && t.date < dateRange.desde) return false;
-      if (dateRange?.hasta && t.date > dateRange.hasta) return false;
-      return true;
-    });
-
-    for (const t of filteredExpenses) {
-      const cat = t.category_id ? catMap.get(t.category_id) : null;
-      let parentCat = cat;
-      if (cat && cat.parent_id) {
-        parentCat = catMap.get(cat.parent_id) || cat;
-      }
-      const name = parentCat ? parentCat.name : 'Sin categoría';
-      const color = parentCat?.color || '#6b7280';
-      const icon = parentCat?.icon || null;
-      const existing = map.get(name) || { name, value: 0, color, icon };
-      existing.value += Math.abs(t.amount);
-      map.set(name, existing);
-    }
-    return Array.from(map.values()).sort((a, b) => b.value - a.value);
+    return prepareCategoryExpensesChartData(transactions, categories, activeAccountId, dateRange);
   }, [transactions, categories, activeAccountId, dateRange]);
 
   const modalTransactions = useMemo(() => {
