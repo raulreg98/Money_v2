@@ -143,6 +143,19 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
                   No se encontró ninguna categoría con "{search}"
                 </div>
               )}
+
+              {allowEmpty && (
+                <div className="bg-slate-800/40 rounded-xl p-2 border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => { onChange(''); setOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 font-semibold hover:bg-slate-800 hover:text-white transition-colors"
+                  >
+                    <div className="w-3 h-3 rounded-full shrink-0 bg-slate-600" />
+                    <span className="truncate">Sin categoría</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Crear categoría rápido */}
