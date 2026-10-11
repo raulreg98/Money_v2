@@ -99,32 +99,9 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
               </button>
             </div>
 
-            {/* Buscador */}
-            <div className="p-3 border-b border-slate-800 bg-slate-950/40">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar categoría…"
-                  className="w-full bg-slate-800 text-slate-200 text-sm rounded-xl pl-9 pr-3 py-2 border border-slate-700 focus:border-blue-500 outline-none"
-                  autoFocus
-                />
-              </div>
-            </div>
-
             {/* Lista de categorías */}
             <div className="overflow-y-auto flex-1 p-3 space-y-3">
-              {allowEmpty && (
-                <button
-                  type="button"
-                  onClick={() => { onChange(''); setOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-slate-800/80 transition-colors border border-dashed border-slate-700"
-                >
-                  — Sin categoría —
-                </button>
-              )}
-              {filtered(parents).map((parent) => {
+              {parents.map((parent) => {
                 const Icon = getIcon(parent.icon) || getIcon(suggestIcon(parent.name));
                 const subs = filtered(childrenOf(parent.id));
                 const parentColor = parent.color || '#3b82f6';
