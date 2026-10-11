@@ -29,3 +29,38 @@ export function matchesCategory(
 
   return false;
 }
+
+export function resolveCategory(
+  categoryId: number | string | null | undefined,
+  categories: Category[]
+): { id: number | null; name: string; color: string; icon: string | null; parent_id: number | null } {
+  if (!categoryId) {
+    return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
+  }
+
+  const catIdNum = typeof categoryId === 'string' ? parseInt(categoryId, 10) : categoryId;
+  if (isNaN(catIdNum)) {
+    return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
+  }
+
+  const catMap = new Map<number, Category>(categories.map(c => [c.id, c]));
+  const cat = catMap.get(catIdNum);
+
+  if (!cat) {
+    return { id: catIdNum, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
+  }
+
+  let color = cat.color;
+  if (!color && cat.parent_id) {
+    const parent = catMap.get(cat.parent_id);
+    color = parent?.color || '#3b82f6';
+  }
+
+  return {
+    id: cat.id,
+    name: cat.name,
+    color: color || '#3b82f6',
+    icon: cat.icon || 'folder',
+    parent_id: cat.parent_id,
+  };
+}

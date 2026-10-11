@@ -605,7 +605,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                               {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
                             </div>
                           </td>
-                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
+                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} categories={categories} size="xs" /></td>
                           <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                           <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
                           <td className="px-5 py-2.5 text-right">
@@ -655,7 +655,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                             className="hover:opacity-80 transition-opacity text-left"
                             title="Cambiar categoría"
                           >
-                            <CategoryBadge category={catById(t.category_id)} size="xs" />
+                            <CategoryBadge category={catById(t.category_id)} categories={categories} size="xs" />
                           </button>
                         </td>
                         <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
