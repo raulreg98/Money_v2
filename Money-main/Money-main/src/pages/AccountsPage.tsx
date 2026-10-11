@@ -381,6 +381,19 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         </div>
       </div>
 
+      {/* Unified Global Time Range Bar */}
+      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl p-3 flex-wrap gap-2">
+        <span className="text-slate-300 text-sm font-medium">Periodo de análisis</span>
+        <div className="flex gap-1.5">
+          {PERIODS.map(p => (
+            <button key={p.id} onClick={() => setPeriod(p.id)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${period === p.id ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Balance */}
       {account.type === 'inversion' ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -401,14 +414,6 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h2 className="text-white font-semibold">Evolución del saldo</h2>
-          <div className="flex gap-1.5">
-            {PERIODS.map(p => (
-              <button key={p.id} onClick={() => setPeriod(p.id)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${period === p.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
-                {p.label}
-              </button>
-            ))}
-          </div>
         </div>
         {balanceSeries.length > 0 ? (
           <ResponsiveContainer width="100%" height={260}>
