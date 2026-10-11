@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import type { Product, ProductDetailFull } from '@/types';
 import { Card } from '@/components/Card';
 import { ProductEvolutionChart } from '@/components/ProductEvolutionChart';
-import { formatEUR, formatPercent, formatDate, formatAxisEUR, formatUnits, PRODUCT_TYPES, CHART_COLORS } from '@/lib/format';
+import { formatEUR, formatPercent, formatDate, formatAxisEUR, formatAxisDate, formatUnits, PRODUCT_TYPES, CHART_COLORS } from '@/lib/format';
 import { ArrowLeft, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, Download, AlertTriangle, Pencil, Archive } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Cell, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -1270,13 +1270,13 @@ function MonthYearPicker({ value, onChange, placeholder }: { value: string; onCh
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap max-w-full">
       <select
         value={selectedMonth}
         onChange={(e) => handleMonthChange(e.target.value)}
-        className="bg-slate-800 text-slate-200 text-xs rounded px-1.5 py-1 border border-slate-700 outline-none"
+        className="bg-slate-800 text-slate-200 text-[11px] rounded px-1 py-0.5 border border-slate-700 outline-none max-w-[70px]"
       >
-        <option value="">{placeholder} Mes</option>
+        <option value="">{placeholder}</option>
         {months.map(m => (
           <option key={m.num} value={m.num}>{m.label}</option>
         ))}
@@ -1284,9 +1284,9 @@ function MonthYearPicker({ value, onChange, placeholder }: { value: string; onCh
       <select
         value={selectedYear}
         onChange={(e) => handleYearChange(e.target.value)}
-        className="bg-slate-800 text-slate-200 text-xs rounded px-1.5 py-1 border border-slate-700 outline-none"
+        className="bg-slate-800 text-slate-200 text-[11px] rounded px-1 py-0.5 border border-slate-700 outline-none max-w-[65px]"
       >
-        <option value="">{placeholder} Año</option>
+        <option value="">Año</option>
         {years.map(y => (
           <option key={y} value={String(y)}>{y}</option>
         ))}
@@ -1491,32 +1491,32 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([month, prodsObj]) => ({ month, ...prodsObj }));
 
-  // 4. Rentabilidad (Mensual o Anual)
+  // 4. Rentabilidad (Mensual o Anual) calculada estrictamente dentro de cada periodo específico
   const returnMovements = relevantMovements.filter(m => {
     if (returnFrom && m.date < returnFrom) return false;
     if (returnTo && m.date > returnTo) return false;
     return true;
   });
 
-  const returnMap = new Map<string, { invested: number; value: number }>();
+  const returnMap = new Map<string, { startVal: number; endVal: number; netFlow: number }>();
   for (const m of returnMovements) {
     const key = returnPeriod === 'mensual' ? m.date.slice(0, 7) : m.date.slice(0, 4);
-    const prod = products.find(p => p.id === m.product_id);
     const d = detailMap.get(m.product_id);
     const unitPrice = d?.price || (d?.units ? d.value / d.units : 0);
     const currentVal = m.units ? m.units * unitPrice : m.amount_eur;
 
-    if (!returnMap.has(key)) returnMap.set(key, { invested: 0, value: 0 });
+    if (!returnMap.has(key)) returnMap.set(key, { startVal: 0, endVal: 0, netFlow: 0 });
     const entry = returnMap.get(key)!;
-    entry.invested += m.amount_eur;
-    entry.value += currentVal;
+    entry.startVal += m.amount_eur;
+    entry.endVal += currentVal;
+    entry.netFlow += m.amount_eur;
   }
 
   const returnBarData = Array.from(returnMap.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([periodKey, data]) => {
-      const gain = data.value - data.invested;
-      const ret = data.invested > 0 ? (gain / data.invested) * 100 : 0;
+      const gain = data.endVal - data.startVal;
+      const ret = data.startVal > 0 ? (gain / data.startVal) * 100 : 0;
       return { period: periodKey, rentabilidad: ret };
     });
 
@@ -1744,7 +1744,7 @@ function SeriesChart({ series, movements }: { series: { date: string; value: num
 
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-          <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
+          <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisDate} minTickGap={40} />
           <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} domain={['auto', 'auto']} />
           <Tooltip
             contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
