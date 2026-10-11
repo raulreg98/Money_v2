@@ -270,9 +270,11 @@ async function fetchProductPrice(product: {
       await savePrice(product.id, result.price, result.currency, result.source, today);
       logPrice(product.name, provider.name, sym, 'OK', `${result.price} ${result.currency}`);
 
-      // Intentar enriquecer datos de mercado (país, sector, top 10 posiciones) si se usa Yahoo
+      // Intentar enriquecer datos de mercado (país, sector, top 10 posiciones)
       if (provider.name === 'Yahoo Finance') {
         fetchAndStoreMarketDetails(product.id, sym).catch(() => {});
+      } else if (provider.name === 'Morningstar') {
+        // Morningstar provider automatically updates product market breakdowns during fetch
       }
 
       return { productId: product.id, productName: product.name, success: true, price: result.price, currency: result.currency, source: result.source, date: today };

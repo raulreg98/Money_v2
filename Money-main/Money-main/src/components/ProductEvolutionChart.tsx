@@ -4,7 +4,7 @@ import { Card } from '@/components/Card';
 import { formatEUR, formatPercent, formatAxisEUR, formatAxisPercent, CHART_COLORS } from '@/lib/format';
 import { Search, Check } from 'lucide-react';
 import {
-  LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid,
+  LineChart, Line, AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid,
 } from 'recharts';
 
 interface ProductEvolutionChartProps {
