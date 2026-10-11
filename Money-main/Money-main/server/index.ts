@@ -1318,7 +1318,7 @@ async function main() {
       const fifo = computeFifo(movements as any);
       const latestPrice = latestPrices.get(product.id);
       const latestValuation = latestValuations.get(product.id);
-      const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono'].includes(product.type);
+      const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono', 'fondo_monetario', 'renta_variable'].includes(product.type);
       if (isPriced) {
         if (latestPrice) {
           investmentValue += fifo.remainingUnits * latestPrice.price;

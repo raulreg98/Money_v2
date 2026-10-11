@@ -64,7 +64,10 @@ export function AppLayout({ current, onNavigate, children }: LayoutProps) {
           <button onClick={() => setMobileOpen(!mobileOpen)} className="text-slate-300 hover:text-white">
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-          <span className="text-white font-semibold">Mi Patrimonio</span>
+          <div className="flex items-center gap-2">
+            <PiggyBank className="w-5 h-5 text-blue-400" />
+            <span className="text-white font-bold">Bilibank</span>
+          </div>
           <div className="w-6" />
         </header>
 
@@ -199,9 +202,9 @@ function SidebarContent({
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-800">
         <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
-          <TrendingUp className="w-5 h-5 text-white" strokeWidth={2.5} />
+          <PiggyBank className="w-5 h-5 text-white" strokeWidth={2.5} />
         </div>
-        <span className="text-white font-bold text-lg tracking-tight">Mi Patrimonio</span>
+        <span className="text-white font-bold text-lg tracking-tight">Bilibank</span>
       </div>
 
       <div className="px-3 pt-3 pb-1">

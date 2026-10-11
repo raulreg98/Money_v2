@@ -1233,6 +1233,56 @@ function BackButton({ onBack }: { onBack: () => void }) {
   );
 }
 
+function MonthYearPicker({ value, onChange, placeholder }: { value: string; onChange: (val: string) => void; placeholder: string }) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 15 }, (_, i) => currentYear - 10 + i);
+  const months = [
+    { num: '01', label: 'Ene' }, { num: '02', label: 'Feb' }, { num: '03', label: 'Mar' },
+    { num: '04', label: 'Abr' }, { num: '05', label: 'May' }, { num: '06', label: 'Jun' },
+    { num: '07', label: 'Jul' }, { num: '08', label: 'Ago' }, { num: '09', label: 'Sep' },
+    { num: '10', label: 'Oct' }, { num: '11', label: 'Nov' }, { num: '12', label: 'Dic' },
+  ];
+
+  const [selectedYear, selectedMonth] = value ? value.split('-') : ['', ''];
+
+  const handleYearChange = (y: string) => {
+    if (!y) { onChange(''); return; }
+    const m = selectedMonth || '01';
+    onChange(`${y}-${m}`);
+  };
+
+  const handleMonthChange = (m: string) => {
+    if (!m) { onChange(''); return; }
+    const y = selectedYear || String(currentYear);
+    onChange(`${y}-${m}`);
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={selectedMonth}
+        onChange={(e) => handleMonthChange(e.target.value)}
+        className="bg-slate-800 text-slate-200 text-xs rounded px-1.5 py-1 border border-slate-700 outline-none"
+      >
+        <option value="">{placeholder} Mes</option>
+        {months.map(m => (
+          <option key={m.num} value={m.num}>{m.label}</option>
+        ))}
+      </select>
+      <select
+        value={selectedYear}
+        onChange={(e) => handleYearChange(e.target.value)}
+        className="bg-slate-800 text-slate-200 text-xs rounded px-1.5 py-1 border border-slate-700 outline-none"
+      >
+        <option value="">{placeholder} Año</option>
+        {years.map(y => (
+          <option key={y} value={String(y)}>{y}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function MovementBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
     compra: 'bg-blue-950 text-blue-400 border-blue-900',
@@ -1486,9 +1536,17 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
             <h2 className="text-white font-semibold">Aportaciones mensuales por producto</h2>
             <div className="flex items-center gap-1.5 text-xs">
-              <input type="month" value={contribFrom ? contribFrom.slice(0, 7) : ''} onChange={(e) => setContribFrom(e.target.value ? `${e.target.value}-01` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+              <MonthYearPicker
+                value={contribFrom ? contribFrom.slice(0, 7) : ''}
+                onChange={(val) => setContribFrom(val ? `${val}-01` : '')}
+                placeholder="Desde"
+              />
               <span className="text-slate-500">→</span>
-              <input type="month" value={contribTo ? contribTo.slice(0, 7) : ''} onChange={(e) => setContribTo(e.target.value ? `${e.target.value}-31` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+              <MonthYearPicker
+                value={contribTo ? contribTo.slice(0, 7) : ''}
+                onChange={(val) => setContribTo(val ? `${val}-31` : '')}
+                placeholder="Hasta"
+              />
             </div>
           </div>
           {monthlyContributionsData.length === 0 ? (
@@ -1514,9 +1572,17 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
             <h2 className="text-white font-semibold">Rentabilidad histórica</h2>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-xs">
-                <input type="month" value={returnFrom ? returnFrom.slice(0, 7) : ''} onChange={(e) => setReturnFrom(e.target.value ? `${e.target.value}-01` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+                <MonthYearPicker
+                  value={returnFrom ? returnFrom.slice(0, 7) : ''}
+                  onChange={(val) => setReturnFrom(val ? `${val}-01` : '')}
+                  placeholder="Desde"
+                />
                 <span className="text-slate-500">→</span>
-                <input type="month" value={returnTo ? returnTo.slice(0, 7) : ''} onChange={(e) => setReturnTo(e.target.value ? `${e.target.value}-31` : '')} className="bg-slate-800 text-slate-200 rounded px-1.5 py-1 border border-slate-700 outline-none" />
+                <MonthYearPicker
+                  value={returnTo ? returnTo.slice(0, 7) : ''}
+                  onChange={(val) => setReturnTo(val ? `${val}-31` : '')}
+                  placeholder="Hasta"
+                />
               </div>
               <div className="flex items-center bg-slate-800 rounded border border-slate-700 p-0.5 text-xs">
                 <button
@@ -1558,12 +1624,38 @@ function InvestmentDashboardCharts({ products, detailMap, allMovements }: { prod
 }
 
 function SeriesChart({ series, movements }: { series: { date: string; value: number }[]; movements?: any[] }) {
+  const [range, setRange] = useState<'1M' | '3M' | '6M' | 'YTD' | '1A' | 'TODO'>('TODO');
   const purchasesSet = new Set((movements || []).filter(m => m.type === 'compra').map(m => m.date));
-  const data = series.map((s) => ({
-    date: s.date,
-    value: s.value,
-    isPurchase: purchasesSet.has(s.date),
-  }));
+
+  const filteredSeries = useMemo(() => {
+    if (!series || series.length === 0) return [];
+    if (range === 'TODO') return series;
+    const lastDateStr = series[series.length - 1].date;
+    const lastDate = new Date(lastDateStr);
+    const cutoff = new Date(lastDate);
+
+    if (range === '1M') cutoff.setMonth(cutoff.getMonth() - 1);
+    else if (range === '3M') cutoff.setMonth(cutoff.getMonth() - 3);
+    else if (range === '6M') cutoff.setMonth(cutoff.getMonth() - 6);
+    else if (range === '1A') cutoff.setFullYear(cutoff.getFullYear() - 1);
+    else if (range === 'YTD') cutoff.setMonth(0, 1);
+
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return series.filter(s => s.date >= cutoffStr);
+  }, [series, range]);
+
+  // Compute baseline cost/invested up to each date for gain calculation
+  const initialValue = series.length > 0 ? series[0].value : 0;
+
+  const data = filteredSeries.map((s) => {
+    const gainPct = initialValue > 0 ? ((s.value - initialValue) / initialValue) * 100 : 0;
+    return {
+      date: s.date,
+      value: s.value,
+      gainPct,
+      isPurchase: purchasesSet.has(s.date),
+    };
+  });
 
   const CustomizedDot = (props: any) => {
     const { cx, cy, payload } = props;
@@ -1575,18 +1667,48 @@ function SeriesChart({ series, movements }: { series: { date: string; value: num
     return null;
   };
 
+  const RANGES: { id: '1M' | '3M' | '6M' | 'YTD' | '1A' | 'TODO'; label: string }[] = [
+    { id: '1M', label: '1M' },
+    { id: '3M', label: '3M' },
+    { id: '6M', label: '6M' },
+    { id: 'YTD', label: 'YTD' },
+    { id: '1A', label: '1A' },
+    { id: 'TODO', label: 'Todo' },
+  ];
+
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-        <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
-        <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} domain={['auto', 'auto']} />
-        <Tooltip
-          contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: '#94a3b8' }}
-          formatter={(v: any) => [formatEUR(Number(v)), 'Valor']}
-        />
-        <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={<CustomizedDot />} />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="space-y-3">
+      <div className="flex items-center gap-1.5 justify-end">
+        {RANGES.map(r => (
+          <button
+            key={r.id}
+            onClick={() => setRange(r.id)}
+            className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              range === r.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      <ResponsiveContainer width="100%" height={280}>
+        <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+          <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
+          <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} domain={['auto', 'auto']} />
+          <Tooltip
+            contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+            labelStyle={{ color: '#cbd5e1' }}
+            formatter={(v: any, name: any, item: any) => {
+              const valEUR = formatEUR(Number(v));
+              const pct = item.payload?.gainPct;
+              const pctStr = pct !== undefined ? ` (${formatPercent(pct)})` : '';
+              return [`${valEUR}${pctStr}`, 'Valor'];
+            }}
+          />
+          <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={<CustomizedDot />} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

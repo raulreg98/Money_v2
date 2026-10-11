@@ -52,23 +52,25 @@ function rowToProduct(row: any[]): Product {
   };
 }
 
+const PRODUCT_SELECT_COLS = `id, name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, created_at, updated_at, alt_source, alt_symbol, account_id, color, country_breakdown, sector_breakdown, top_holdings`;
+
 export async function getAllProducts(): Promise<Product[]> {
   const db = await getDb();
-  const result = db.exec(`SELECT * FROM products WHERE archived = 0 ORDER BY name`);
+  const result = db.exec(`SELECT ${PRODUCT_SELECT_COLS} FROM products WHERE archived = 0 ORDER BY name`);
   if (result.length === 0) return [];
   return result[0].values.map(rowToProduct);
 }
 
 export async function getAllProductsWithArchived(): Promise<Product[]> {
   const db = await getDb();
-  const result = db.exec(`SELECT * FROM products ORDER BY archived, name`);
+  const result = db.exec(`SELECT ${PRODUCT_SELECT_COLS} FROM products ORDER BY archived, name`);
   if (result.length === 0) return [];
   return result[0].values.map(rowToProduct);
 }
 
 export async function getProductById(id: number): Promise<Product | null> {
   const db = await getDb();
-  const result = db.exec(`SELECT * FROM products WHERE id = ?`, [id]);
+  const result = db.exec(`SELECT ${PRODUCT_SELECT_COLS} FROM products WHERE id = ?`, [id]);
   if (result.length === 0 || result[0].values.length === 0) return null;
   return rowToProduct(result[0].values[0]);
 }
