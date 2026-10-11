@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
 import type { ChartWidget, Transaction, Account, Category } from '@/types';
 import { Card } from '@/components/Card';
