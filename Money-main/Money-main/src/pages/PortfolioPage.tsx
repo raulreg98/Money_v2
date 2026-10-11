@@ -1391,9 +1391,14 @@ function ProductBreakdowns({ product }: { product: Product }) {
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={countries} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}%`, 'Peso']} />
+                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  labelStyle={{ color: '#cbd5e1' }}
+                  formatter={(v: any) => [`${v}%`, 'Peso']}
+                />
                 <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -1406,9 +1411,14 @@ function ProductBreakdowns({ product }: { product: Product }) {
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={sectors} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => [`${v}%`, 'Peso']} />
+                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  labelStyle={{ color: '#cbd5e1' }}
+                  formatter={(v: any) => [`${v}%`, 'Peso']}
+                />
                 <Bar dataKey="value" fill="#059669" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

@@ -363,7 +363,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={data} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} minTickGap={40} />
+              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisDate} minTickGap={40} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatY} domain={['auto', 'auto']} />
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
