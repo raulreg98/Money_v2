@@ -61,24 +61,44 @@ export function computeDailySeries(
   const dStart = new Date(start);
   const dEnd = new Date(end);
 
-  let cumulativeInvested = 0;
+  const sortedMovements = [...movements].sort((a, b) => a.date.localeCompare(b.date));
+  let runningUnits = 0;
   let prevValue = 0;
 
   for (let d = new Date(dStart); d <= dEnd; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().slice(0, 10);
-    const flow = movementsByDate.get(dateStr);
-    if (flow !== undefined) cumulativeInvested += flow;
 
-    const val = getValuationAt(dateStr);
-    if (val !== null) {
-      prevValue = val;
-      series.push({ date: dateStr, value: val });
-    } else {
-      series.push({ date: dateStr, value: prevValue });
+    // Update running units for this date
+    for (const m of sortedMovements) {
+      if (m.date === dateStr) {
+        if (m.type === 'compra' || m.type === 'saldo') {
+          runningUnits += (m.units || 0);
+        } else if (m.type === 'venta') {
+          runningUnits -= (m.units || 0);
+        }
+      }
     }
+
+    const price = getPriceAt(dateStr);
+    const val = getValuationAt(dateStr);
+
+    let dayValue = prevValue;
+    if (val !== null) {
+      dayValue = val;
+    } else if (price !== null && runningUnits > 0) {
+      dayValue = runningUnits * price;
+    } else if (sortedPrices.length > 0 && runningUnits > 0) {
+      // Use nearest price
+      dayValue = runningUnits * sortedPrices[0].price;
+    } else if (movementsByDate.get(dateStr) !== undefined) {
+      dayValue = Math.abs(movementsByDate.get(dateStr)!);
+    }
+
+    if (dayValue > 0) prevValue = dayValue;
+    series.push({ date: dateStr, value: dayValue });
   }
 
-  if (series.length > 0) {
+  if (series.length > 0 && currentValue > 0) {
     series[series.length - 1].value = currentValue;
   }
 

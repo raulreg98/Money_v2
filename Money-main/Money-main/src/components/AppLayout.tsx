@@ -22,10 +22,23 @@ const NAV_ITEMS: { id: PageId; label: string; icon: typeof LayoutDashboard }[] =
 
 export function AppLayout({ current, onNavigate, children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showNewTxModal, setShowNewTxModal] = useState(false);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   const handleNav = (page: PageId, accountId?: number) => {
     onNavigate(page, accountId);
     setMobileOpen(false);
+  };
+
+  const handleOpenNewTx = () => {
+    Promise.all([api.getAccounts(), api.getCategories()])
+      .then(([accs, cats]) => {
+        setAccounts(accs.filter((a: any) => !a.archived));
+        setCategories(cats);
+        setShowNewTxModal(true);
+      })
+      .catch(() => {});
   };
 
   return (
@@ -46,7 +59,7 @@ export function AppLayout({ current, onNavigate, children }: LayoutProps) {
       )}
 
       {/* Main */}
-      <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-60 flex flex-col min-h-screen pb-20 md:pb-0">
         <header className="md:hidden sticky top-0 z-20 bg-slate-900 border-b border-slate-800 px-4 h-14 flex items-center justify-between">
           <button onClick={() => setMobileOpen(!mobileOpen)} className="text-slate-300 hover:text-white">
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -56,7 +69,70 @@ export function AppLayout({ current, onNavigate, children }: LayoutProps) {
         </header>
 
         <main className="flex-1 p-4 md:p-8 overflow-x-hidden">{children}</main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+          <button
+            onClick={() => handleNav('dashboard')}
+            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
+              current === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Panel</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('accounts')}
+            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
+              current === 'accounts' ? 'text-blue-400' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Wallet className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Cuentas</span>
+          </button>
+
+          {/* Botón Central Destacado */}
+          <button
+            onClick={handleOpenNewTx}
+            className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 -mt-5 transition-transform active:scale-95"
+            title="Nueva transacción"
+          >
+            <Plus className="w-6 h-6 stroke-[2.5]" />
+          </button>
+
+          <button
+            onClick={() => handleNav('portfolio')}
+            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
+              current === 'portfolio' ? 'text-blue-400' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Briefcase className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Inversiones</span>
+          </button>
+
+          <button
+            onClick={() => handleNav('settings')}
+            className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors ${
+              current === 'settings' ? 'text-blue-400' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Ajustes</span>
+          </button>
+        </nav>
       </div>
+
+      {showNewTxModal && (
+        <AddTransactionModal
+          accounts={accounts}
+          categories={categories}
+          onClose={() => {
+            setShowNewTxModal(false);
+            onNavigate(current);
+          }}
+        />
+      )}
     </div>
   );
 }

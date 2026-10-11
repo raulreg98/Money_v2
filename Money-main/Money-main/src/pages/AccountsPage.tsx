@@ -729,8 +729,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ title, onClose, onSave, saving, error, children }: { title: string; onClose: () => void; onSave: () => void; saving: boolean; error: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] min-h-[420px] overflow-y-auto pb-28" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center sm:justify-center justify-end flex-col sm:flex-row px-0 sm:px-4" onClick={onClose}>
+      <div className="bg-slate-900 sm:rounded-2xl rounded-t-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] min-h-[400px] overflow-y-auto pb-28 sm:pb-6 animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
         {children}
         {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -862,7 +862,7 @@ export function AddTransactionModal({ existingTx, accounts, categories, defaultA
         </Field>
         <Field label="Fecha"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} /></Field>
       </div>
-      <Field label="Importe (€)"><input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></Field>
+      <Field label="Importe (€)"><input type="number" inputMode="decimal" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></Field>
       <Field label="Cuenta">
         <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputCls}>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

@@ -4,6 +4,7 @@ import { getRate } from './exchangeRates';
 import { getMovementsByProduct } from '../repositories/movementRepo';
 import type { PriceProvider, LatestPrice, HistoricalPrice } from './prices/types';
 import { sequentialDelay } from './prices/types';
+import { morningstarProvider } from './prices/morningstar';
 import { yahooProvider } from './prices/yahoo';
 import { stooqProvider } from './prices/stooq';
 import { coinGeckoProvider } from './prices/coingecko';
@@ -13,6 +14,7 @@ import { parseCsvHistory } from './prices/manual';
 import { getSetting, setSetting } from '../repositories/settingsRepo';
 
 const PROVIDERS: Record<string, PriceProvider> = {
+  morningstar: morningstarProvider,
   yahoo: yahooProvider,
   stooq: stooqProvider,
   coingecko: coinGeckoProvider,
@@ -24,6 +26,7 @@ function getProvider(sourceName: string | null): PriceProvider | null {
   if (!sourceName) return null;
   const lower = sourceName.toLowerCase();
   if (PROVIDERS[lower]) return PROVIDERS[lower];
+  if (lower === 'morningstar') return morningstarProvider;
   if (lower === 'yahoo finance' || lower === 'yahoo') return yahooProvider;
   if (lower === 'stooq') return stooqProvider;
   if (lower === 'coingecko') return coinGeckoProvider;

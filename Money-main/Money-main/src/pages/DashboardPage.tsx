@@ -16,6 +16,7 @@ export function DashboardPage() {
   const [txLimit, setTxLimit] = useState<number>(5);
   const [accountFilter, setAccountFilter] = useState<string>('');
   const [catChartType, setCatChartType] = useState<'donut' | 'bar'>('donut');
+  const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -243,12 +244,12 @@ export function DashboardPage() {
         ) : catChartType === 'donut' ? (
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
-              <Pie data={categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45}>
+              <Pie data={categoryChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} className="cursor-pointer">
                 {categoryChartData.map((entry: any, i: number) => (
-                  <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />
+                  <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => setSelectedCatName(entry.name)} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => formatEUR(Number(v))} />
+              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
@@ -258,10 +259,10 @@ export function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} formatter={(v: any) => formatEUR(Number(v))} />
-              <Bar dataKey="value" name="Gasto" fill="#dc2626" radius={[4, 4, 0, 0]}>
+              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
+              <Bar dataKey="value" name="Gasto" fill="#dc2626" radius={[4, 4, 0, 0]} className="cursor-pointer">
                 {categoryChartData.map((entry: any, i: number) => (
-                  <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} />
+                  <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => setSelectedCatName(entry.name)} />
                 ))}
               </Bar>
             </BarChart>
@@ -328,6 +329,62 @@ export function DashboardPage() {
           </div>
         </Card>
       )}
+
+      {selectedCatName && (
+        <CategoryTransactionsModal
+          categoryName={selectedCatName}
+          transactions={filteredTransactions.filter(t => {
+            if (t.type !== 'gasto') return false;
+            const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
+            const name = cat ? cat.name : 'Sin categoría';
+            return name === selectedCatName;
+          })}
+          accounts={accounts}
+          onClose={() => setSelectedCatName(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CategoryTransactionsModal({ categoryName, transactions, accounts, onClose }: {
+  categoryName: string;
+  transactions: Transaction[];
+  accounts: Account[];
+  onClose: () => void;
+}) {
+  const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
+  const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h2 className="text-white font-semibold text-lg">{categoryName}</h2>
+            <p className="text-slate-400 text-xs mt-0.5">Total gastado: <span className="text-red-400 font-bold">{formatEUR(total)}</span> ({transactions.length} movimientos)</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg">✕</button>
+        </div>
+        <div className="overflow-y-auto flex-1 space-y-2 pr-1">
+          {transactions.length === 0 ? (
+            <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
+          ) : (
+            transactions.map(t => (
+              <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+                <div>
+                  <p className="text-white text-sm font-medium">{t.note || 'Sin nota'}</p>
+                  <p className="text-slate-400 text-xs">{formatDate(t.date)} · {accName(t.account_id)}</p>
+                </div>
+                <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">
+          Cerrar
+        </button>
+      </div>
     </div>
   );
 }
