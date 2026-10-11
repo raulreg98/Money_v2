@@ -23,6 +23,7 @@ export interface Product {
   country_breakdown: string | null;
   sector_breakdown: string | null;
   top_holdings: string | null;
+  alias: string | null;
 }
 
 function rowToProduct(row: any[]): Product {
@@ -49,10 +50,11 @@ function rowToProduct(row: any[]): Product {
     country_breakdown: (row[19] as string) ?? null,
     sector_breakdown: (row[20] as string) ?? null,
     top_holdings: (row[21] as string) ?? null,
+    alias: (row[22] as string) ?? null,
   };
 }
 
-const PRODUCT_SELECT_COLS = `id, name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, created_at, updated_at, alt_source, alt_symbol, account_id, color, country_breakdown, sector_breakdown, top_holdings`;
+const PRODUCT_SELECT_COLS = `id, name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, created_at, updated_at, alt_source, alt_symbol, account_id, color, country_breakdown, sector_breakdown, top_holdings, alias`;
 
 export async function getAllProducts(): Promise<Product[]> {
   const db = await getDb();
@@ -75,19 +77,19 @@ export async function getProductById(id: number): Promise<Product | null> {
   return rowToProduct(result[0].values[0]);
 }
 
-export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'archived' | 'manual_price' | 'long_term' | 'alt_source' | 'alt_symbol' | 'account_id' | 'color' | 'country_breakdown' | 'sector_breakdown' | 'top_holdings'> & {
+export async function createProduct(data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'archived' | 'manual_price' | 'long_term' | 'alt_source' | 'alt_symbol' | 'account_id' | 'color' | 'country_breakdown' | 'sector_breakdown' | 'top_holdings' | 'alias'> & {
   manual_price?: number; long_term?: number; archived?: number; alt_source?: string | null; alt_symbol?: string | null; account_id?: number | null;
-  color?: string | null; country_breakdown?: string | null; sector_breakdown?: string | null; top_holdings?: string | null;
+  color?: string | null; country_breakdown?: string | null; sector_breakdown?: string | null; top_holdings?: string | null; alias?: string | null;
 }): Promise<number> {
   const db = await getDb();
   db.run(
-    `INSERT INTO products (name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, alt_source, alt_symbol, account_id, color, country_breakdown, sector_breakdown, top_holdings)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO products (name, type, isin, ticker, currency, price_source, ter, risk, category, manual_price, long_term, archived, alt_source, alt_symbol, account_id, color, country_breakdown, sector_breakdown, top_holdings, alias)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.name, data.type, data.isin ?? null, data.ticker ?? null, data.currency, data.price_source ?? null,
       data.ter ?? null, data.risk ?? null, data.category ?? null, data.manual_price ?? 0, data.long_term ?? 1, data.archived ?? 0,
       data.alt_source ?? null, data.alt_symbol ?? null, data.account_id ?? null,
-      data.color ?? null, data.country_breakdown ?? null, data.sector_breakdown ?? null, data.top_holdings ?? null,
+      data.color ?? null, data.country_breakdown ?? null, data.sector_breakdown ?? null, data.top_holdings ?? null, data.alias ?? null,
     ],
   );
   scheduleSave();

@@ -101,16 +101,11 @@ export function monthNameFull(month: number): string {
 }
 
 export const PRODUCT_TYPES: Record<string, string> = {
-  materia_prima: 'Materias primas',
-  cripto: 'Cripto',
   renta_variable: 'Renta variable',
   fondo_monetario: 'Fondo monetario',
-  fondo: 'Fondo',
-  etf: 'ETF',
-  accion: 'Acción',
-  bono: 'Bono',
-  plan_pension: 'Plan de pensiones',
-  cuenta_efectivo: 'Cuenta/Efectivo',
+  cripto: 'Cripto',
+  materia_prima: 'Materias primas',
+  accion: 'Acciones',
 };
 
 export const ACCOUNT_TYPES: Record<string, string> = {

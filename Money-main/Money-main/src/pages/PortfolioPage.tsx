@@ -213,7 +213,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
       {error && <Card className="p-4"><p className="text-red-400 text-sm">{error}</p></Card>}
       {priceMessage && <Card className="p-3"><p className="text-slate-300 text-sm">{priceMessage}</p></Card>}
 
-      {products.length > 0 && <ProductEvolutionChart products={products.map(p => ({ id: p.id, name: p.name, color: p.color }))} />}
+      {products.length > 0 && <ProductEvolutionChart products={products.map(p => ({ id: p.id, name: p.name, alias: p.alias, color: p.color }))} />}
 
       {/* Tabla de Productos de Inversión (situada por encima de los 4 gráficos inferiores) */}
       {products.length === 0 ? (
@@ -253,7 +253,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
                   >
                     <td className="px-5 py-3 text-white font-medium flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || '#3b82f6' }} />
-                      <span>{p.name}</span>
+                      <span>{p.alias || p.name}</span>
                     </td>
                     <td className="px-5 py-3 text-slate-400">{PRODUCT_TYPES[p.type] || p.type}</td>
                     <td className="px-5 py-3 text-slate-400">
@@ -454,7 +454,8 @@ const PRICE_SOURCES = [
 
 function AddProductModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
-  const [type, setType] = useState('fondo');
+  const [alias, setAlias] = useState('');
+  const [type, setType] = useState('renta_variable');
   const [isin, setIsin] = useState('');
   const [ticker, setTicker] = useState('');
   const [currency, setCurrency] = useState('EUR');
@@ -503,7 +504,9 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
     setSaving(true);
     try {
       const id = await api.createProduct({
-        name, type,
+        name,
+        alias: alias || null,
+        type,
         isin: isin || null,
         ticker: ticker || null,
         currency,
@@ -552,7 +555,8 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </div>
-        <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} /></Field>
+        <Field label="Nombre largo"><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} /></Field>
+        <Field label="Apodo / Alias (Opcional)"><input value={alias} onChange={(e) => setAlias(e.target.value)} className={inputCls} placeholder="Ej: MSCI World" /></Field>
         <Field label="Tipo">
           <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
             {Object.entries(PRODUCT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -801,6 +805,7 @@ function ProductDetail({ productId, onBack }: { productId: number; onBack: () =>
 
 function EditProductModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const [name, setName] = useState(product.name);
+  const [alias, setAlias] = useState(product.alias || '');
   const [type, setType] = useState(product.type);
   const [isin, setIsin] = useState(product.isin || '');
   const [ticker, setTicker] = useState(product.ticker || '');
@@ -830,7 +835,9 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
     setSaving(true);
     try {
       await api.updateProduct(product.id, {
-        name, type,
+        name,
+        alias: alias || null,
+        type,
         isin: isin || null,
         ticker: ticker || null,
         currency,
@@ -856,7 +863,8 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">Editar producto</h2>
-        <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} /></Field>
+        <Field label="Nombre largo"><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} /></Field>
+        <Field label="Apodo / Alias (Opcional)"><input value={alias} onChange={(e) => setAlias(e.target.value)} className={inputCls} placeholder="Ej: MSCI World" /></Field>
         <Field label="Tipo">
           <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
             {Object.entries(PRODUCT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -1301,23 +1309,45 @@ function MovementBadge({ type }: { type: string }) {
 
 function parseKeyValueText(text: string | null): { name: string; value: number }[] {
   if (!text || !text.trim()) return [];
+  const res: { name: string; value: number }[] = [];
+
   try {
     const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) return parsed;
-    if (typeof parsed === 'object') {
-      return Object.entries(parsed).map(([k, v]) => ({ name: k, value: Number(v) }));
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (item && typeof item === 'object') {
+          const name = item.name || item.holdingName || item.country || item.sector || Object.keys(item)[0] || '';
+          const rawVal = item.value ?? item.percentage ?? item.weight ?? item[name] ?? 0;
+          const num = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal).replace(/%/g, '').trim());
+          if (name && !isNaN(num)) res.push({ name: String(name), value: num });
+        }
+      }
+      if (res.length > 0) return res;
+    } else if (typeof parsed === 'object') {
+      for (const [k, v] of Object.entries(parsed)) {
+        const num = typeof v === 'number' ? v : parseFloat(String(v).replace(/%/g, '').trim());
+        if (k && !isNaN(num)) res.push({ name: k, value: num });
+      }
+      if (res.length > 0) return res;
     }
   } catch {}
 
   const lines = text.split('\n');
-  const res: { name: string; value: number }[] = [];
   for (const l of lines) {
-    const parts = l.split(/[:;,=]/);
+    const parts = l.split(':');
     if (parts.length >= 2) {
       const name = parts[0].trim();
-      const valStr = parts[1].replace(/%/g, '').trim();
+      const valStr = parts.slice(1).join(':').replace(/%/g, '').trim();
       const num = parseFloat(valStr);
       if (name && !isNaN(num)) res.push({ name, value: num });
+    } else {
+      const altParts = l.split(/[,;=]/);
+      if (altParts.length >= 2) {
+        const name = altParts[0].trim();
+        const valStr = altParts[1].replace(/%/g, '').trim();
+        const num = parseFloat(valStr);
+        if (name && !isNaN(num)) res.push({ name, value: num });
+      }
     }
   }
   return res;
@@ -1648,11 +1678,27 @@ function SeriesChart({ series, movements }: { series: { date: string; value: num
     return series.filter(s => s.date >= cutoffStr);
   }, [series, range]);
 
-  // Compute baseline cost/invested up to each date for gain calculation
-  const initialValue = series.length > 0 ? series[0].value : 0;
+  // Calculate cumulative invested total (TotalAportado_t) at each date
+  const sortedMovements = [...(movements || [])]
+    .filter(m => m.type === 'compra' || m.type === 'saldo' || m.type === 'venta')
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const investedAtDate = (date: string): number => {
+    let total = 0;
+    for (const m of sortedMovements) {
+      if (m.date <= date) {
+        if (m.type === 'compra' || m.type === 'saldo') total += m.amount_eur;
+        else if (m.type === 'venta') total -= m.amount_eur;
+      } else {
+        break;
+      }
+    }
+    return total;
+  };
 
   const data = filteredSeries.map((s) => {
-    const gainPct = initialValue > 0 ? ((s.value - initialValue) / initialValue) * 100 : 0;
+    const totalAportado = investedAtDate(s.date);
+    const gainPct = totalAportado > 0 ? ((s.value - totalAportado) / totalAportado) * 100 : 0;
     return {
       date: s.date,
       value: s.value,
