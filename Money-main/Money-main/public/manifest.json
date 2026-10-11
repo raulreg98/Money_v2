@@ -1,7 +1,8 @@
 {
-  "name": "Mi Patrimonio - Finanzas & Inversiones",
-  "short_name": "Patrimonio",
+  "name": "Bilibank - Finanzas & Inversiones",
+  "short_name": "Bilibank",
   "description": "Gestión de Finanzas e Inversiones Personales",
+  "prefer_related_applications": false,
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
