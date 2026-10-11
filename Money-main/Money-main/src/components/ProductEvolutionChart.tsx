@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 
 interface ProductEvolutionChartProps {
-  products: { id: number; name: string; color?: string | null }[];
+  products: { id: number; name: string; alias?: string | null; color?: string | null }[];
 }
 
 type Metric = 'valor' | 'rentabilidad' | 'pure_return' | 'pure_return_percent' | 'area_stacked_eur' | 'area_stacked_pct';
@@ -220,7 +220,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
     const p = products.find(prod => prod.id === id);
     return {
       key: `p${id}`,
-      name: p?.name || `#${id}`,
+      name: p?.alias || p?.name || `#${id}`,
       color: p?.color || colorForId(id),
     };
   });
@@ -303,7 +303,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
                     {selected.includes(p.id) && <Check className="w-3 h-3 text-white" />}
                   </div>
                   <div className="w-3 h-3 rounded-full" style={{ background: colorForId(p.id) }} />
-                  <span className="text-sm text-slate-300">{p.name}</span>
+                  <span className="text-sm text-slate-300">{p.alias || p.name}</span>
                 </button>
               ))}
               {filteredProducts.length === 0 && (

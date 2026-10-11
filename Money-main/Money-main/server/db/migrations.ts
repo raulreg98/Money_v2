@@ -221,4 +221,10 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE products ADD COLUMN top_holdings TEXT;
     `,
   },
+  {
+    version: 11,
+    sql: `
+      ALTER TABLE products ADD COLUMN alias TEXT;
+    `,
+  },
 ];

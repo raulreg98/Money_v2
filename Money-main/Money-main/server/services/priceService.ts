@@ -219,9 +219,15 @@ export async function fetchAndStoreMarketDetails(productId: number, symbol: stri
     }
 
     const updates: Partial<any> = {};
-    if (countryBreakdown && countryBreakdown.length > 0) updates.country_breakdown = JSON.stringify(countryBreakdown);
-    if (sectorBreakdown && sectorBreakdown.length > 0) updates.sector_breakdown = JSON.stringify(sectorBreakdown);
-    if (topHoldings && topHoldings.length > 0) updates.top_holdings = JSON.stringify(topHoldings);
+    if (countryBreakdown && countryBreakdown.length > 0) {
+      updates.country_breakdown = countryBreakdown.map(c => `${c.country}: ${c.percentage.toFixed(2)}%`).join('\n');
+    }
+    if (sectorBreakdown && sectorBreakdown.length > 0) {
+      updates.sector_breakdown = sectorBreakdown.map(s => `${s.sector}: ${s.percentage.toFixed(2)}%`).join('\n');
+    }
+    if (topHoldings && topHoldings.length > 0) {
+      updates.top_holdings = topHoldings.map(h => `${h.name}: ${h.percentage.toFixed(2)}%`).join('\n');
+    }
 
     if (Object.keys(updates).length > 0) {
       await updateProduct(productId, updates);

@@ -1064,7 +1064,7 @@ async function main() {
       let pricePerUnit: number | null = null;
       let priceDate: string | null = null;
       let priceSource: string | null = null;
-      const isPriced = ['fondo', 'etf', 'accion', 'cripto', 'materia_prima', 'bono', 'fondo_monetario', 'renta_variable'].includes(product.type);
+      const isPriced = ['renta_variable', 'fondo_monetario', 'cripto', 'materia_prima', 'accion', 'fondo', 'etf', 'bono'].includes(product.type);
       if (isPriced) {
         if (latestPrice) {
           pricePerUnit = latestPrice.price;
