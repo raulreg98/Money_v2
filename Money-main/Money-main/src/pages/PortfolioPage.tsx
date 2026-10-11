@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import type { Product, ProductDetailFull } from '@/types';
 import { Card } from '@/components/Card';
@@ -222,7 +222,8 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         </Card>
       ) : (
         <Card className="overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
                 <th className="px-5 py-3 font-medium hover:text-white" onClick={() => handleSort('name')}>Nombre {sortField === 'name' ? (sortAsc ? '▲' : '▼') : ''}</th>
@@ -279,6 +280,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
               })}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 
@@ -310,7 +312,8 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         {filteredMovements.length === 0 ? (
           <p className="text-slate-500 text-sm p-5">Sin aportaciones registradas</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
                 <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('date')}>Fecha {movSortField === 'date' ? (movSortAsc ? '▲' : '▼') : ''}</th>
@@ -344,6 +347,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 
