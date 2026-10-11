@@ -105,11 +105,11 @@ export async function searchInstruments(query: string): Promise<any[]> {
 
 function mapYahooType(quoteType: string): string {
   switch (quoteType) {
-    case 'MUTUALFUND': return 'fondo';
-    case 'ETF': return 'etf';
+    case 'MUTUALFUND': return 'renta_variable';
+    case 'ETF': return 'renta_variable';
     case 'EQUITY': return 'accion';
     case 'CRYPTOCURRENCY': return 'cripto';
-    case 'INDEX': return 'indice';
+    case 'INDEX': return 'renta_variable';
     default: return 'accion';
   }
 }
