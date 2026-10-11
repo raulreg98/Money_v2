@@ -65,6 +65,18 @@ export function computeDailySeries(
   let runningUnits = 0;
   let prevValue = 0;
 
+  // Pre-calculate running units for movements prior to dStart
+  const startStr = dStart.toISOString().slice(0, 10);
+  for (const m of sortedMovements) {
+    if (m.date < startStr) {
+      if (m.type === 'compra' || m.type === 'saldo') {
+        runningUnits += (m.units || 0);
+      } else if (m.type === 'venta') {
+        runningUnits -= (m.units || 0);
+      }
+    }
+  }
+
   for (let d = new Date(dStart); d <= dEnd; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().slice(0, 10);
 

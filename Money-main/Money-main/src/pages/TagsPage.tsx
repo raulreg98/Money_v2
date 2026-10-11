@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { setTagNavListener } from '@/lib/tagNav';
 import type { Tag, Transaction, Account, Category } from '@/types';
 import { Card } from '@/components/Card';
+import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
 import { TagChips, TagSelector } from '@/components/TagSelector';
 import { formatEUR, formatDate, formatAxisEUR, CHART_COLORS } from '@/lib/format';
 import { Plus, Trash2, Tag as TagIcon, ArrowLeft, Edit3, Search, X, Check, AlertTriangle } from 'lucide-react';
@@ -390,17 +391,12 @@ function EditTransactionModal({ tx, accounts, categories, allTags, onClose }: {
         </div>
         {type !== 'transferencia' && categories.length > 0 && (
           <div><label className="block text-sm font-medium text-slate-300 mb-1.5">Categoría (opcional)</label>
-            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputCls}>
-              <option value="">Sin categoría</option>
-              {parentCategories.map(pc => (
-                <optgroup key={pc.id} label={pc.name}>
-                  <option value={pc.id}>{pc.name}</option>
-                  {categories.filter(sc => sc.parent_id === pc.id).map(sc => (
-                    <option key={sc.id} value={sc.id}>{pc.name} {`>`} {sc.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <CategorySelector
+              categories={categories}
+              value={categoryId}
+              onChange={setCategoryId}
+              allowEmpty
+            />
           </div>
         )}
         <div>
