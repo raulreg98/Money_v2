@@ -492,7 +492,7 @@ async function main() {
       transactions: pagedTx,
       allTransactions: filtered,
       totalCount: filtered.length,
-      accounts: allAccounts.map(a => ({ id: a.id, name: a.name })),
+      accounts: allAccounts.map(a => ({ id: a.id, name: a.name, color: a.color, type: a.type })),
       categories: categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
       tags: tags.map(t => ({ id: t.id, name: t.name, color: t.color })),
       balanceSeries,
