@@ -4,6 +4,7 @@ import { Card } from '@/components/Card';
 import { CategoryBadge } from '@/components/CategorySelector';
 import { formatEUR, formatDate, formatAxisEUR, CHART_COLORS } from '@/lib/format';
 import { prepareCategoryExpensesChartData } from '@/lib/chartData';
+import { resolveCategory } from '@/lib/categories';
 import { PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer, Tooltip, Legend, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -230,15 +231,15 @@ export function ExpenseCategoryModal({
             <p className="text-slate-500 text-sm py-6 text-center">Sin transacciones registradas</p>
           ) : (
             transactions.map(t => {
+              const resolved = resolveCategory(t.category_id, categories);
               const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
-              const catColor = cat?.color || '#3b82f6';
               return (
                 <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: catColor }} />
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: resolved.color }} />
                     <div>
                       <div className="flex items-center gap-2">
-                        <CategoryBadge category={cat} size="xs" />
+                        <CategoryBadge category={cat} categories={categories} size="xs" />
                         {t.note && <span className="text-slate-400 text-xs">({t.note})</span>}
                       </div>
                       <p className="text-slate-400 text-xs mt-0.5">{formatDate(t.date)} · {accName(t.account_id)}</p>

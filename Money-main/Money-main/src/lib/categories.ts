@@ -51,15 +51,15 @@ export function resolveCategory(
   }
 
   let color = cat.color;
-  if (!color && cat.parent_id) {
+  if ((!color || color === '#6b7280') && cat.parent_id) {
     const parent = catMap.get(cat.parent_id);
-    color = parent?.color || '#3b82f6';
+    if (parent?.color) color = parent.color;
   }
 
   return {
     id: cat.id,
     name: cat.name,
-    color: color || '#3b82f6',
+    color: color || '#6b7280',
     icon: cat.icon || 'folder',
     parent_id: cat.parent_id,
   };
