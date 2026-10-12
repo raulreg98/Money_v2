@@ -194,14 +194,14 @@ export function CategorySelector({ categories: categoriesProp, value, onChange, 
   );
 }
 
-export function CategoryBadge({ category, categories: categoriesProp, size = 'sm' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
-  const { categories: contextCategories } = useCategoryContext();
-  const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : contextCategories;
-
+export function CategoryBadge({ category, size = 'xs' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
   if (!category) return <span className="text-slate-600 text-sm">—</span>;
-  const Icon = getIcon(category.icon) || getIcon(suggestIcon(category.name));
+
+  const color = (category as any).color || '#6b7280';
+  const iconName = (category as any).icon;
+  const Icon = getIcon(iconName) || getIcon(suggestIcon(category.name));
   const cls = size === 'xs' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  const color = getCategoryColor(category, categories);
+
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border"
