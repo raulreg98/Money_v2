@@ -30,34 +30,35 @@ export function matchesCategory(
   return false;
 }
 
-let cachedCategories: Category[] = [];
-
-export function setCachedCategories(cats: Category[]) {
-  if (cats && cats.length > 0) {
-    cachedCategories = cats;
-  }
-}
-
 export function resolveCategory(
   categoryId: number | string | null | undefined,
-  categories?: Category[]
+  categories: Category[]
 ): { id: number | null; name: string; color: string; icon: string | null; parent_id: number | null } {
-  if (!categoryId) {
-    return { id: null, name: 'Sin categoría', color: '#6b7280', icon: null, parent_id: null };
+  if (!categoryId || !categories || categories.length === 0) {
+    return { id: categoryId ? Number(categoryId) : null, name: 'Sin categoría', color: '#6b7280', icon: null, parent_id: null };
   }
 
-  const catList = (categories && categories.length > 0) ? categories : cachedCategories;
-
-  for (const cat of catList) {
+  for (const cat of categories) {
     if (String(cat.id) === String(categoryId)) {
-      const parent = cat.parent_id ? catList.find(p => p.id === cat.parent_id) : null;
       return {
         id: cat.id,
         name: cat.name,
-        color: cat.color || parent?.color || '#6b7280',
-        icon: cat.icon || parent?.icon || null,
+        color: cat.color || '#6b7280',
+        icon: cat.icon || null,
         parent_id: cat.parent_id || null,
       };
+    }
+    if ((cat as any).subcategories && Array.isArray((cat as any).subcategories)) {
+      const sub = (cat as any).subcategories.find((s: any) => String(s.id) === String(categoryId));
+      if (sub) {
+        return {
+          id: sub.id,
+          name: sub.name,
+          color: sub.color || cat.color || '#6b7280',
+          icon: sub.icon || cat.icon || null,
+          parent_id: cat.id,
+        };
+      }
     }
   }
 
