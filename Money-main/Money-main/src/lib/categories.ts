@@ -48,7 +48,7 @@ export function resolveCategory(
         id: cat.id,
         name: cat.name,
         color: cat.color || '#6b7280',
-        icon: cat.icon || 'folder',
+        icon: cat.icon || null,
         parent_id: cat.parent_id || null,
       };
     }
@@ -59,7 +59,7 @@ export function resolveCategory(
           id: sub.id,
           name: sub.name,
           color: sub.color || cat.color || '#6b7280',
-          icon: sub.icon || cat.icon || 'folder',
+          icon: sub.icon || cat.icon || null,
           parent_id: cat.id,
         };
       }
