@@ -837,7 +837,7 @@ function EditAccountModal({ account, onClose }: { account: Account; onClose: () 
   );
 }
 
-export function AddTransactionModal({ existingTx, accounts, categories, defaultAccountId, onClose }: { existingTx?: Transaction; accounts: Account[]; categories: Category[]; defaultAccountId?: number; onClose: () => void }) {
+export function AddTransactionModal({ existingTx, accounts, categories, defaultAccountId, onClose }: { existingTx?: Transaction; accounts: Account[]; categories?: Category[]; defaultAccountId?: number; onClose: () => void }) {
   const [type, setType] = useState(existingTx?.type || 'gasto');
   const [date, setDate] = useState(existingTx?.date || new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState(existingTx ? Math.abs(existingTx.amount).toString() : '');
