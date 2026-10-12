@@ -38,7 +38,9 @@ export function resolveCategory(
     return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
   }
 
-  const catList = categories && categories.length > 0 ? categories : (typeof window !== 'undefined' ? (window as any).__GLOBAL_CATEGORIES__ || [] : []);
+  // Si categories viene vacío ([]), usar las categorías globales de window
+  const globalCats = typeof window !== 'undefined' ? (window as any).__GLOBAL_CATEGORIES__ || [] : [];
+  const catList = categories && categories.length > 0 ? categories : globalCats;
 
   for (const cat of catList) {
     if (String(cat.id) === String(categoryId)) {
