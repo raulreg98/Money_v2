@@ -89,7 +89,7 @@ export function CategorySelector({ categories: categoriesProp, value, onChange, 
       {/* Modal flotante secundario por encima */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/75 z-[80] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto"
           onClick={() => setOpen(false)}
         >
           <div

@@ -89,11 +89,11 @@ function AccountListList({ onSelect }: { onSelect: (id: number) => void }) {
           <h1 className="text-2xl font-bold text-white tracking-tight">Cuentas</h1>
           <p className="text-slate-400 text-sm mt-1">Balance total: {formatEUR(totalBalance)}</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowAddAccount(true)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+          <button onClick={() => setShowAddAccount(true)} className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-1 sm:flex-initial">
             <Plus className="w-4 h-4" /> Cuenta
           </button>
-          <button onClick={() => setShowAddTx(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <button onClick={() => setShowAddTx(true)} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-1 sm:flex-initial">
             <Plus className="w-4 h-4" /> Transacción
           </button>
         </div>
@@ -360,7 +360,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const donutTotal = donutData.reduce((s: number, d: any) => s + d.value, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6 rounded-2xl border transition-colors" style={{ backgroundColor: `${account.color}10`, borderColor: `${account.color}25` }}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
@@ -376,26 +376,26 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           {transactions.length > 0 && (
-            <button onClick={handleUndo} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors" title="Deshacer último movimiento">
+            <button onClick={handleUndo} className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm px-2.5 py-2 rounded-lg transition-colors flex-1 sm:flex-initial" title="Deshacer último movimiento">
               Deshacer
             </button>
           )}
-          <button onClick={() => { setTargetBalance(balance.toString()); setShowAdjustBalance(true); }} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors">
-            Ajustar Saldo
+          <button onClick={() => { setTargetBalance(balance.toString()); setShowAdjustBalance(true); }} className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm px-2.5 py-2 rounded-lg transition-colors flex-1 sm:flex-initial">
+            Ajustar
           </button>
-          <button onClick={() => setEditingAccount(true)} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors">
-            <Edit3 className="w-4 h-4" /> Editar
+          <button onClick={() => setEditingAccount(true)} className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm px-2.5 py-2 rounded-lg transition-colors flex-1 sm:flex-initial">
+            <Edit3 className="w-3.5 h-3.5" /> Editar
           </button>
           <button
             onClick={async () => { await api.archiveAccount(accountId, true); onBack(); }}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-2 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm px-2.5 py-2 rounded-lg transition-colors flex-1 sm:flex-initial"
           >
-            <Archive className="w-4 h-4" /> Archivar
+            <Archive className="w-3.5 h-3.5" /> Archivar
           </button>
-          <button onClick={() => setShowAddTx(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-            <Plus className="w-4 h-4" /> Añadir transacción
+          <button onClick={() => setShowAddTx(true)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-1 sm:flex-initial">
+            <Plus className="w-4 h-4 shrink-0" /> <span className="truncate">+ Transacción</span>
           </button>
         </div>
       </div>
@@ -791,7 +791,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ title, onClose, onSave, saving, error, children }: { title: string; onClose: () => void; onSave: () => void; saving: boolean; error: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
         {children}

@@ -4,6 +4,7 @@ import type { Product, ProductDetailFull } from '@/types';
 import { Card } from '@/components/Card';
 import { ProductEvolutionChart } from '@/components/ProductEvolutionChart';
 import { formatEUR, formatPercent, formatDate, formatAxisEUR, formatAxisDate, formatUnits, PRODUCT_TYPES, CHART_COLORS } from '@/lib/format';
+import { AccountSelector } from '@/components/AccountSelector';
 import { ArrowLeft, Plus, Trash2, TrendingUp, TrendingDown, RefreshCw, Download, AlertTriangle, Pencil, Archive } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, BarChart, Bar, Cell, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -177,16 +178,15 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
           <p className="text-slate-400 text-sm mt-1">Tus productos de inversión</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-          <select
-            value={selectedAccountId}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none flex-1 sm:flex-initial min-w-[180px]"
-          >
-            <option value="">Todas las cuentas de inversión</option>
-            {accounts.filter((a: any) => a.type === 'inversion').map((a: any) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
+          <div className="flex-1 sm:flex-initial min-w-[220px]">
+            <AccountSelector
+              accounts={accounts.filter((a: any) => a.type === 'inversion')}
+              value={selectedAccountId}
+              onChange={setSelectedAccountId}
+              allowEmpty
+              emptyLabel="Todas las cuentas de inversión"
+            />
+          </div>
           <button
             onClick={updateAllPrices}
             disabled={updatingPrices}
@@ -222,7 +222,8 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
         </Card>
       ) : (
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table (hidden sm:block) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
             <thead>
               <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
@@ -280,6 +281,52 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
               })}
             </tbody>
           </table>
+          </div>
+
+          {/* Mobile Card List (sm:hidden) */}
+          <div className="sm:hidden divide-y divide-slate-800/60">
+            {sortedProducts.map((p) => {
+              const d = detailMap.get(p.id);
+              const value = d?.value || 0;
+              const invested = d?.invested || 0;
+              const gain = d?.gain || 0;
+              const ret = invested > 0 ? (gain / invested) * 100 : 0;
+              const color = gain > 0 ? 'text-emerald-400' : gain < 0 ? 'text-red-400' : 'text-slate-400';
+              const accountName = accounts.find(a => a.id === p.account_id)?.name || 'Sin cuenta';
+
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => onSelect(p.id)}
+                  className="p-4 space-y-2 cursor-pointer active:bg-slate-800/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || '#3b82f6' }} />
+                      <span className="text-white font-medium text-sm truncate">{p.alias || p.name}</span>
+                    </div>
+                    <span className="text-slate-400 text-xs shrink-0">{PRODUCT_TYPES[p.type] || p.type}</span>
+                  </div>
+
+                  <p className="text-slate-400 text-xs">{accountName}</p>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800/40">
+                    <div>
+                      <span className="text-slate-500 block">Valor / Invertido</span>
+                      <span className="text-slate-200 font-semibold text-sm">{formatEUR(value)}</span>
+                      <span className="text-slate-400 text-xs ml-1.5">({formatEUR(invested)})</span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-slate-500 block">G/P (%)</span>
+                      <span className={`font-semibold text-sm ${color}`}>
+                        {formatEUR(gain, { sign: true })} ({formatPercent(ret)})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
@@ -405,7 +452,7 @@ function DeleteProductModal({ product, onCancel, onDeleted }: { product: Product
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onCancel}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">Eliminar "{product.name}"</h2>
         {loading ? (
@@ -528,7 +575,7 @@ function AddProductModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">Nuevo producto</h2>
         <div className="relative">
@@ -860,7 +907,7 @@ function EditProductModal({ product, onClose }: { product: Product; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">Editar producto</h2>
         <Field label="Nombre largo"><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} /></Field>
@@ -1060,7 +1107,7 @@ function ManualPriceModal({ productId, onClose }: { productId: number; onClose: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">Precio manual</h2>
         <Field label="Precio (€)"><input type="number" step="any" value={price} onChange={(e) => setPrice(e.target.value)} className={inputCls} autoFocus /></Field>
@@ -1094,7 +1141,7 @@ function CsvImportModal({ productId, onClose }: { productId: number; onClose: ()
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">Importar histórico CSV</h2>
         <p className="text-slate-400 text-sm">Formato: <code className="text-slate-300">fecha;precio</code> o <code className="text-slate-300">date,close</code></p>

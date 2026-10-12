@@ -320,7 +320,7 @@ function WidgetWizard({ accounts, categories, editWidget, onClose }: {
   const update = (patch: Partial<WizardConfig>) => setConfig(prev => ({ ...prev, ...patch }));
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 m-auto w-full max-w-5xl h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
@@ -705,7 +705,7 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
 
 function DeleteConfirm({ widget, onCancel, onConfirm }: { widget: ChartWidget; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center px-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onCancel}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold">¿Eliminar "{widget.name}"?</h2>
         <div className="flex gap-3">
@@ -720,7 +720,7 @@ function DeleteConfirm({ widget, onCancel, onConfirm }: { widget: ChartWidget; o
 function RenameModal({ widget, onClose, onSave }: { widget: ChartWidget; onClose: () => void; onSave: (name: string) => void }) {
   const [name, setName] = useState(widget.name);
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold">Renombrar</h2>
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} autoFocus />

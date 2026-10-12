@@ -217,7 +217,7 @@ export function ExpenseCategoryModal({
   const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   return (
-    <div className="fixed inset-0 bg-black/75 z-[90] flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
