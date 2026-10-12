@@ -76,7 +76,6 @@ export function ChartsPage() {
   const load = () => {
     Promise.all([api.getWidgets(), api.getAccounts(), api.getCategories()])
       .then(([w, a, c]) => {
-        if (typeof window !== 'undefined') (window as any).__GLOBAL_CATEGORIES__ = c;
         setWidgets(w); setAccounts(a); setCategories(c);
       })
       .finally(() => setLoading(false));
