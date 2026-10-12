@@ -5,7 +5,7 @@ import { CategoryBadge } from '@/components/CategorySelector';
 import { formatEUR, formatDate, formatAxisEUR, CHART_COLORS } from '@/lib/format';
 import { prepareCategoryExpensesChartData } from '@/lib/chartData';
 import { resolveCategory } from '@/lib/categories';
-import { api } from '@/lib/api';
+import { useCategoryContext } from '@/context/CategoryContext';
 import { PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer, Tooltip, Legend, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -71,18 +71,12 @@ export function CategoryExpensesChart({
   dateRange = null,
   showAccountSelector = false,
 }: CategoryExpensesChartProps) {
-  const [fetchedCategories, setFetchedCategories] = useState<Category[]>([]);
+  const { categories: contextCategories } = useCategoryContext();
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>(accountId ? String(accountId) : '');
   const [chartType, setChartType] = useState<'donut' | 'bar'>('donut');
   const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!categoriesProp || categoriesProp.length === 0) {
-      api.getCategories().then(setFetchedCategories).catch(() => {});
-    }
-  }, [categoriesProp]);
-
-  const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : fetchedCategories;
+  const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : contextCategories;
   const activeAccountId = selectedAccountFilter ? parseInt(selectedAccountFilter) : accountId;
 
   const chartData = useMemo(() => {

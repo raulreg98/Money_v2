@@ -7,6 +7,7 @@ import { AccountsPage } from '@/pages/AccountsPage';
 import { ChartsPage } from '@/pages/ChartsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { CategoriesPage } from '@/pages/CategoriesPage';
+import { CategoryProvider } from '@/context/CategoryContext';
 
 function AppContent() {
   const [page, setPage] = useState<PageId>('dashboard');
@@ -38,7 +39,9 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <CategoryProvider>
+        <AppContent />
+      </CategoryProvider>
     </ErrorBoundary>
   );
 }

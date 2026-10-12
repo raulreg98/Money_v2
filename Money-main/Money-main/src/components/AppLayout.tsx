@@ -34,7 +34,6 @@ export function AppLayout({ current, onNavigate, children }: LayoutProps) {
   const handleOpenNewTx = () => {
     Promise.all([api.getAccounts(), api.getCategories()])
       .then(([accs, cats]) => {
-        if (typeof window !== 'undefined') (window as any).__GLOBAL_CATEGORIES__ = cats;
         setAccounts(accs.filter((a: any) => !a.archived));
         setCategories(cats);
         setShowNewTxModal(true);
@@ -192,7 +191,6 @@ function SidebarContent({
   const handleOpenNewTx = () => {
     Promise.all([api.getAccounts(), api.getCategories()])
       .then(([accs, cats]) => {
-        if (typeof window !== 'undefined') (window as any).__GLOBAL_CATEGORIES__ = cats;
         setAccounts(accs.filter((a: any) => !a.archived));
         setCategories(cats);
         setShowNewTxModal(true);
