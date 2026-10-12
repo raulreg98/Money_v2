@@ -5,6 +5,7 @@ import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
 import { CategoryExpensesChart } from '@/components/CategoryExpensesChart';
 import { resolveCategory } from '@/lib/categories';
+import { useCategoryContext } from '@/context/CategoryContext';
 import { formatEUR, formatDate, formatAxisEUR, formatAxisDate, formatUnits, ACCOUNT_TYPES } from '@/lib/format';
 import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X, Landmark } from 'lucide-react';
 import {
@@ -220,6 +221,7 @@ function periodToRange(period: Period): { desde: string; hasta: string } {
 }
 
 function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () => void }) {
+  const { resolveCategory: resolveCategoryFromContext } = useCategoryContext();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -337,7 +339,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
 
   const accName = (id: number) => accList.find((a: any) => a.id === id)?.name || '—';
   const catById = (id: number | null) => {
-    return resolveCategory(id, categories) as any;
+    return resolveCategoryFromContext(id) as any;
   };
 
   const donutData = gastosPorCategoria;
