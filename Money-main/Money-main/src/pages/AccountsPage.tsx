@@ -256,7 +256,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
 
   useEffect(() => { loadSummary(); }, [accountId, period, txType, txCat, search, showAllTx]);
 
-  if ((loading && !data) || categoriesLoading || !contextCategories || contextCategories.length === 0) {
+  if (loading && !data) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
@@ -273,8 +273,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
     );
   }
 
-  const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
-  const categories = contextCategories;
+  const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
 
   const handleAdjustBalance = async () => {
     const target = parseFloat(targetBalance);
