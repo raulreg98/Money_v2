@@ -4,6 +4,7 @@ import type { Account, Transaction, Category } from '@/types';
 import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
 import { CategoryExpensesChart } from '@/components/CategoryExpensesChart';
+import { resolveCategory } from '@/lib/categories';
 import { formatEUR, formatDate, formatAxisEUR, formatAxisDate, formatUnits, ACCOUNT_TYPES } from '@/lib/format';
 import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X, Landmark } from 'lucide-react';
 import {
@@ -334,8 +335,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
 
   const accName = (id: number) => accList.find((a: any) => a.id === id)?.name || '—';
   const catById = (id: number | null) => {
-    if (!id) return null;
-    return categories.find((c: any) => c.id === id) || null;
+    return resolveCategory(id, categories) as any;
   };
 
   const donutData = gastosPorCategoria;

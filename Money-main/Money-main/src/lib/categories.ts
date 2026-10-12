@@ -34,7 +34,7 @@ export function resolveCategory(
   categoryId: number | string | null | undefined,
   categories: Category[]
 ): { id: number | null; name: string; color: string; icon: string | null; parent_id: number | null } {
-  if (!categoryId) {
+  if (!categoryId || !categories || categories.length === 0) {
     return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
   }
 
@@ -43,24 +43,29 @@ export function resolveCategory(
     return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
   }
 
-  const catMap = new Map<number, Category>(categories.map(c => [c.id, c]));
-  const cat = catMap.get(catIdNum);
-
-  if (!cat) {
-    return { id: catIdNum, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
+  for (const cat of categories) {
+    if (cat.id === catIdNum) {
+      return {
+        id: cat.id,
+        name: cat.name,
+        color: cat.color || '#6b7280',
+        icon: cat.icon || 'folder',
+        parent_id: cat.parent_id || null,
+      };
+    }
+    if ((cat as any).subcategories && Array.isArray((cat as any).subcategories)) {
+      const sub = (cat as any).subcategories.find((s: any) => s.id === catIdNum);
+      if (sub) {
+        return {
+          id: sub.id,
+          name: sub.name,
+          color: sub.color || cat.color || '#6b7280',
+          icon: sub.icon || cat.icon || 'folder',
+          parent_id: cat.id,
+        };
+      }
+    }
   }
 
-  let color = cat.color;
-  if ((!color || color === '#6b7280') && cat.parent_id) {
-    const parent = catMap.get(cat.parent_id);
-    if (parent?.color) color = parent.color;
-  }
-
-  return {
-    id: cat.id,
-    name: cat.name,
-    color: color || '#6b7280',
-    icon: cat.icon || 'folder',
-    parent_id: cat.parent_id,
-  };
+  return { id: catIdNum, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
 }
