@@ -757,8 +757,8 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <p className="text-slate-400 text-xs mt-1">Se creará una transacción de ingreso o gasto por la diferencia para ajustar el saldo real.</p>
         </Modal>
       )}
-      {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={activeCategories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
-      {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={activeCategories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
+      {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: a.color || '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={activeCategories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
+      {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: a.color || '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={activeCategories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
       {editingAccount && <EditAccountModal account={account} onClose={() => { setEditingAccount(false); loadSummary(); }} />}
     </div>
   );
@@ -791,7 +791,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ title, onClose, onSave, saving, error, children }: { title: string; onClose: () => void; onSave: () => void; saving: boolean; error: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
         {children}
