@@ -29,6 +29,7 @@ export function DashboardPage() {
       api.getCategories(),
     ])
       .then(([d, s, t, a, c]) => {
+        if (typeof window !== 'undefined') (window as any).__GLOBAL_CATEGORIES__ = c;
         setDash(d);
         setSummary(s);
         setTransactions(t);
