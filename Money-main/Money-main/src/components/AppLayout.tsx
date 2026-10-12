@@ -329,7 +329,7 @@ function SidebarContent({
       </nav>
 
       <div className="px-3 py-4 border-t border-slate-800">
-        <span className="text-slate-500 text-xs px-3 font-medium">Versión 10</span>
+        <span className="text-slate-500 text-xs px-3 font-medium">Versión 11</span>
       </div>
 
       {showNewTxModal && (
