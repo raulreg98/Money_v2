@@ -155,8 +155,14 @@ function AccountSection({ title, subtotal, accounts, accountBalance, onSelect, o
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {accounts.map((acc) => {
           const bal = accountBalance(acc);
+          const cardBg = acc.color ? `${acc.color}15` : undefined;
+          const cardBorder = acc.color ? `${acc.color}40` : undefined;
           return (
-            <Card key={acc.id} className="p-5 hover:border-slate-700 transition-colors cursor-pointer" >
+            <Card
+              key={acc.id}
+              className="p-5 hover:border-slate-500 transition-colors cursor-pointer border"
+              style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+            >
               <div className="flex items-center justify-between mb-3" onClick={() => onSelect(acc.id)}>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ background: acc.color }} />
@@ -225,7 +231,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState<Period>('3M');
+  const [period, setPeriod] = useState<Period>('1M');
   const [txType, setTxType] = useState('');
   const [txCat, setTxCat] = useState('');
   const [search, setSearch] = useState('');
@@ -564,7 +570,8 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <p className="text-slate-500 text-sm p-5">Sin transacciones</p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Desktop View (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-slate-400 text-left border-b border-slate-800">
@@ -625,13 +632,6 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={async () => { await api.deleteTransaction(t.id); loadSummary(); }}
-                                className="text-slate-600 hover:text-red-400 transition-colors"
-                                title="Eliminar"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -677,13 +677,6 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={async () => { await api.deleteTransaction(t.id); loadSummary(); }}
-                              className="text-slate-600 hover:text-red-400 transition-colors"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -691,6 +684,51 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile View (< md) */}
+            <div className="md:hidden divide-y divide-slate-800/60">
+              {transactions.map((t: Transaction) => {
+                const selected = selectedTxIds.has(t.id);
+                const runningBal = (t as any).running_balance;
+                const isExpense = t.type === 'gasto';
+                const isTransfer = t.type === 'transferencia';
+
+                let displayAmount = formatEUR(Math.abs(t.amount));
+                let colorCls = isExpense ? 'text-red-400' : 'text-emerald-400';
+
+                if (isTransfer) {
+                  const isOutgoing = t.amount < 0;
+                  displayAmount = isOutgoing ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
+                  colorCls = isOutgoing ? 'text-red-400' : 'text-emerald-400';
+                } else if (isExpense) {
+                  displayAmount = `-${formatEUR(Math.abs(t.amount))}`;
+                } else {
+                  displayAmount = formatEUR(Math.abs(t.amount), { sign: true });
+                }
+
+                const detailText = isTransfer
+                  ? `${accName(t.account_id)} → ${accName(t.to_account_id || t.account_id)}${t.note ? ` (${t.note})` : ''}`
+                  : (t.note || '—');
+
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => setEditingTx(t)}
+                    className={`p-4 space-y-2 cursor-pointer active:bg-slate-800/50 transition-colors ${selected ? 'bg-blue-600/10' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-slate-400 text-xs font-medium">{formatDate(t.date)}</span>
+                      <CategoryBadge category={catById(t.category_id)} categories={activeCategories} size="xs" />
+                    </div>
+                    <p className="text-white text-sm font-medium truncate">{detailText}</p>
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/40">
+                      <span className={`font-semibold text-sm ${colorCls}`}>{displayAmount}</span>
+                      <span className="text-slate-400">Saldo: <span className="text-slate-200 font-medium">{runningBal != null ? formatEUR(runningBal) : '—'}</span></span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {totalCount > 20 && !showAllTx && (
               <button onClick={() => setShowAllTx(true)} className="w-full py-3 text-blue-400 hover:text-blue-300 text-sm transition-colors border-t border-slate-800">
@@ -872,42 +910,76 @@ export function AddTransactionModal({ existingTx, accounts, categories, defaultA
     } catch (err: any) { setError(err.message); } finally { setSaving(false); }
   };
 
+  const handleDelete = async () => {
+    if (!existingTx) return;
+    setSaving(true);
+    try {
+      await api.deleteTransaction(existingTx.id);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Modal title={existingTx ? "Editar transacción" : "Nueva transacción"} onClose={onClose} onSave={save} saving={saving} error={error}>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Tipo">
-          <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
-            <option value="gasto">Gasto</option><option value="ingreso">Ingreso</option><option value="transferencia">Transferencia</option>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center sm:justify-center justify-end flex-col sm:flex-row px-0 sm:px-4" onClick={onClose}>
+      <div className="bg-slate-900 sm:rounded-2xl rounded-t-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] min-h-[400px] overflow-y-auto pb-28 sm:pb-6 animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-white font-semibold text-lg">{existingTx ? "Editar transacción" : "Nueva transacción"}</h2>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Tipo">
+            <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
+              <option value="gasto">Gasto</option><option value="ingreso">Ingreso</option><option value="transferencia">Transferencia</option>
+            </select>
+          </Field>
+          <Field label="Fecha"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} /></Field>
+        </div>
+        <Field label="Importe (€)"><input type="number" inputMode="decimal" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></Field>
+        <Field label="Cuenta">
+          <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputCls}>
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </Field>
-        <Field label="Fecha"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} /></Field>
+        {type === 'transferencia' && (
+          <Field label="Cuenta destino">
+            <select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} className={inputCls}>
+              <option value="">Seleccionar…</option>
+              {accounts.filter((a) => a.id.toString() !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </Field>
+        )}
+        {type !== 'transferencia' && (
+          <Field label="Categoría">
+            <CategorySelector
+              categories={categories}
+              value={categoryId}
+              onChange={setCategoryId}
+              allowEmpty
+            />
+          </Field>
+        )}
+        <Field label="Nota"><input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} /></Field>
+
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+
+        <div className="flex gap-3 pt-2">
+          {existingTx && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving}
+              className="bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-400 text-sm px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" /> Eliminar
+            </button>
+          )}
+          <button onClick={onClose} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-lg transition-colors">Cancelar</button>
+          <button onClick={save} disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white text-sm py-2.5 rounded-lg transition-colors">{saving ? 'Guardando…' : 'Guardar'}</button>
+        </div>
       </div>
-      <Field label="Importe (€)"><input type="number" inputMode="decimal" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></Field>
-      <Field label="Cuenta">
-        <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputCls}>
-          {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-      </Field>
-      {type === 'transferencia' && (
-        <Field label="Cuenta destino">
-          <select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} className={inputCls}>
-            <option value="">Seleccionar…</option>
-            {accounts.filter((a) => a.id.toString() !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-        </Field>
-      )}
-      {type !== 'transferencia' && (
-        <Field label="Categoría">
-          <CategorySelector
-            categories={categories}
-            value={categoryId}
-            onChange={setCategoryId}
-            allowEmpty
-          />
-        </Field>
-      )}
-      <Field label="Nota"><input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} /></Field>
-    </Modal>
+    </div>
   );
 }
 

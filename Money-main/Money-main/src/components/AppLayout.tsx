@@ -285,7 +285,7 @@ function SidebarContent({
                       onClick={() => onNavigate('accounts', a.id)}
                       className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
                     >
-                      <span className="truncate">{a.name}</span>
+                      <span className="truncate font-medium" style={{ color: a.color || '#cbd5e1' }}>{a.name}</span>
                       <span className="text-slate-300 font-medium ml-2">{formatEUR(getAccountBalance(a))}</span>
                     </button>
                   ))}
@@ -304,7 +304,7 @@ function SidebarContent({
                       onClick={() => onNavigate('accounts', a.id)}
                       className="w-full flex items-center justify-between px-2 py-1.5 rounded text-xs text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
                     >
-                      <span className="truncate">{a.name}</span>
+                      <span className="truncate font-medium" style={{ color: a.color || '#cbd5e1' }}>{a.name}</span>
                       <span className="text-slate-300 font-medium ml-2">{formatEUR(getAccountBalance(a))}</span>
                     </button>
                   ))}

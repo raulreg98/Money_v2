@@ -452,7 +452,7 @@ function WidgetWizard({ accounts, categories, editWidget, onClose }: {
             ) : !previewData || (previewData.data && previewData.data.length === 0) ? (
               <div className="text-center py-12"><p className="text-slate-500 text-sm">Sin datos con estos filtros</p></div>
             ) : (
-              <PreviewChart config={config} data={previewData} categories={categories} />
+              <PreviewChart config={config} data={previewData} categories={categories} accounts={accounts} />
             )}
           </div>
         </div>
@@ -477,7 +477,7 @@ function WidgetWizard({ accounts, categories, editWidget, onClose }: {
 
 // ===================== PREVIEW CHART =====================
 
-function PreviewChart({ config, data, categories, onCellClick }: { config: WizardConfig; data: any; categories: Category[]; onCellClick?: (catName: string) => void }) {
+function PreviewChart({ config, data, categories, accounts = [], onCellClick }: { config: WizardConfig; data: any; categories: Category[]; accounts?: Account[]; onCellClick?: (catName: string) => void }) {
   const chartType = config.chart_type;
   const d = data.data || [];
   if (!d || d.length === 0) return <p className="text-slate-500 text-sm text-center py-12">Sin datos</p>;
@@ -496,9 +496,14 @@ function PreviewChart({ config, data, categories, onCellClick }: { config: Wizar
             cx="50%" cy="50%" outerRadius={90} innerRadius={45}
             label={config.show_values ? (e: any) => `${e.name || e.label}: ${formatEUR(e.value || e.gastos || 0, { compact: true })}` : false}
           >
-            {d.map((entry: any, i: number) => (
-              <Cell key={i} fill={entry.color || catColors(entry.name || entry.label) || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => onCellClick?.(entry.name || entry.label)} className="cursor-pointer" />
-            ))}
+            {d.map((entry: any, i: number) => {
+              const label = entry.name || entry.label;
+              const acc = accounts.find(a => a.name === label);
+              const color = acc?.color || entry.color || catColors(label) || CHART_COLORS[i % CHART_COLORS.length];
+              return (
+                <Cell key={i} fill={color} onClick={() => onCellClick?.(label)} className="cursor-pointer" />
+              );
+            })}
           </Pie>
           <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
           {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
@@ -574,9 +579,14 @@ function PreviewChart({ config, data, categories, onCellClick }: { config: Wizar
         <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#cbd5e1' }} formatter={(v: any) => formatEUR(Number(v))} />
         {config.show_legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
         <Bar dataKey={valKey} name={config.name || 'Valor'} fill={color} radius={[4, 4, 0, 0]}>
-          {data.type === 'category' && d.map((entry: any, i: number) => (
-            <Cell key={i} fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]} onClick={() => onCellClick?.(entry.name || entry.label)} className="cursor-pointer" />
-          ))}
+          {data.type === 'category' && d.map((entry: any, i: number) => {
+            const label = entry.name || entry.label;
+            const acc = accounts.find(a => a.name === label);
+            const color = acc?.color || entry.color || CHART_COLORS[i % CHART_COLORS.length];
+            return (
+              <Cell key={i} fill={color} onClick={() => onCellClick?.(label)} className="cursor-pointer" />
+            );
+          })}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -675,7 +685,7 @@ function WidgetChart({ widget, accounts, categories }: { widget: ChartWidget; ac
       ) : !data || (data.data && data.data.length === 0) ? (
         <p className="text-slate-500 text-sm text-center py-8">Sin datos</p>
       ) : (
-        <PreviewChart config={config} data={data} categories={categories} onCellClick={handleCellClick} />
+        <PreviewChart config={config} data={data} categories={categories} accounts={accounts} onCellClick={handleCellClick} />
       )}
 
       {selectedCategory && (
