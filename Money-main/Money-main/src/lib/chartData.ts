@@ -11,15 +11,7 @@ export interface CategoryChartItem {
 
 export function getCategoryColor(category: Category | null | undefined, categories: Category[] = []): string {
   if (!category) return '#6b7280';
-  if (category.color && category.color.trim() !== '') return category.color;
-
-  // Try parent color
-  if (category.parent_id) {
-    const parent = categories.find(c => c.id === category.parent_id);
-    if (parent?.color && parent.color.trim() !== '') return parent.color;
-  }
-
-  return '#6b7280';
+  return category.color || '#6b7280';
 }
 
 export function prepareCategoryExpensesChartData(
