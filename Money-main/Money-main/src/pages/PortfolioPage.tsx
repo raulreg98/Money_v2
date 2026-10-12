@@ -176,11 +176,11 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
           <h1 className="text-2xl font-bold text-white tracking-tight">Inversiones</h1>
           <p className="text-slate-400 text-sm mt-1">Tus productos de inversión</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <select
             value={selectedAccountId}
             onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none"
+            className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 border border-slate-700 outline-none flex-1 sm:flex-initial min-w-[180px]"
           >
             <option value="">Todas las cuentas de inversión</option>
             {accounts.filter((a: any) => a.type === 'inversion').map((a: any) => (
@@ -190,13 +190,13 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
           <button
             onClick={updateAllPrices}
             disabled={updatingPrices}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-700 text-slate-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-700 text-slate-300 text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-1 sm:flex-initial"
           >
-            <RefreshCw className={`w-4 h-4 ${updatingPrices ? 'animate-spin' : ''}`} /> Actualizar precios
+            <RefreshCw className={`w-4 h-4 ${updatingPrices ? 'animate-spin' : ''}`} /> Actualizar
           </button>
           <button
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex-1 sm:flex-initial"
           >
             <Plus className="w-4 h-4" /> Añadir
           </button>

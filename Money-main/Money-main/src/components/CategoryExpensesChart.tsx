@@ -6,7 +6,8 @@ import { formatEUR, formatDate, formatAxisEUR, CHART_COLORS } from '@/lib/format
 import { prepareCategoryExpensesChartData } from '@/lib/chartData';
 import { resolveCategory } from '@/lib/categories';
 import { useCategoryContext } from '@/context/CategoryContext';
-import { PieChart as PieIcon, BarChart3 } from 'lucide-react';
+import { AddTransactionModal } from '@/pages/AccountsPage';
+import { PieChart as PieIcon, BarChart3, Edit3 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer, Tooltip, Legend, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface CategoryExpensesChartProps {
@@ -211,11 +212,12 @@ export function ExpenseCategoryModal({
   categories: Category[];
   onClose: () => void;
 }) {
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
   const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[90] flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 z-[90] flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
@@ -237,7 +239,11 @@ export function ExpenseCategoryModal({
               const resolved = resolveCategory(t.category_id, categories);
               const cat = t.category_id ? categories.find(c => c.id === t.category_id) : null;
               return (
-                <div key={t.id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+                <div
+                  key={t.id}
+                  onClick={() => setEditingTx(t)}
+                  className="flex items-center justify-between bg-slate-800/50 hover:bg-slate-800 p-3 rounded-xl border border-slate-800 cursor-pointer transition-colors"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: resolved.color }} />
                     <div>
@@ -248,7 +254,17 @@ export function ExpenseCategoryModal({
                       <p className="text-slate-400 text-xs mt-0.5">{formatDate(t.date)} · {accName(t.account_id)}</p>
                     </div>
                   </div>
-                  <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-400 font-semibold text-sm">-{formatEUR(Math.abs(t.amount))}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setEditingTx(t); }}
+                      className="text-slate-500 hover:text-blue-400 p-1 transition-colors"
+                      title="Editar"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })
@@ -258,6 +274,18 @@ export function ExpenseCategoryModal({
         <button type="button" onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm py-2.5 rounded-xl transition-colors">
           Cerrar
         </button>
+
+        {editingTx && (
+          <AddTransactionModal
+            existingTx={editingTx}
+            accounts={accounts}
+            categories={categories}
+            onClose={() => {
+              setEditingTx(null);
+              onClose();
+            }}
+          />
+        )}
       </div>
     </div>
   );
