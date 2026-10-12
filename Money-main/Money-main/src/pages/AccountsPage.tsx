@@ -155,13 +155,16 @@ function AccountSection({ title, subtotal, accounts, accountBalance, onSelect, o
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {accounts.map((acc) => {
           const bal = accountBalance(acc);
-          const cardBg = acc.color ? `${acc.color}15` : undefined;
+          const cardBg = acc.color ? `${acc.color}18` : undefined;
           const cardBorder = acc.color ? `${acc.color}40` : undefined;
           return (
             <Card
               key={acc.id}
               className="p-5 hover:border-slate-500 transition-colors cursor-pointer border"
-              style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+              style={{
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
+              }}
             >
               <div className="flex items-center justify-between mb-3" onClick={() => onSelect(acc.id)}>
                 <div className="flex items-center gap-2">
@@ -469,7 +472,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         {/* Gastos por categoría unificado */}
         <CategoryExpensesChart
           title="Gastos por categoría"
-          transactions={transactions}
+          transactions={data.allTransactions || transactions}
           categories={activeCategories}
           accounts={accList}
           accountId={accountId}

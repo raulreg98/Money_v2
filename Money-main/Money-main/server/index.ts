@@ -490,6 +490,7 @@ async function main() {
       investedValue,
       totalBalance: balance + investedValue,
       transactions: pagedTx,
+      allTransactions: filtered,
       totalCount: filtered.length,
       accounts: allAccounts.map(a => ({ id: a.id, name: a.name })),
       categories: categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
