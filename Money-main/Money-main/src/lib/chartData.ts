@@ -19,9 +19,7 @@ export function getCategoryColor(category: Category | null | undefined, categori
     if (parent?.color && parent.color.trim() !== '') return parent.color;
   }
 
-  // Fallback based on ID or index
-  const index = Math.abs(category.id || 0) % CHART_COLORS.length;
-  return CHART_COLORS[index] || '#3b82f6';
+  return '#6b7280';
 }
 
 export function prepareCategoryExpensesChartData(
