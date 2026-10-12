@@ -1,5 +1,6 @@
 import type { Category, Transaction } from '@/types';
 import { CHART_COLORS } from '@/lib/format';
+import { resolveCategory } from '@/lib/categories';
 
 export interface CategoryChartItem {
   name: string;
@@ -46,8 +47,9 @@ export function prepareCategoryExpensesChartData(
     if (cat && cat.parent_id) {
       parentCat = catMap.get(cat.parent_id) || cat;
     }
-    const name = parentCat ? parentCat.name : 'Sin categoría';
-    const color = getCategoryColor(parentCat || cat, categories);
+    const resolved = resolveCategory(parentCat?.id || cat?.id, categories);
+    const name = resolved.name;
+    const color = resolved.color;
     const icon = parentCat?.icon || cat?.icon || null;
 
     const existing = map.get(name) || { name, value: 0, color, icon };
