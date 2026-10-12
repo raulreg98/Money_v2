@@ -46,7 +46,10 @@ function AccountListList({ onSelect }: { onSelect: (id: number) => void }) {
 
   const load = () => {
     Promise.all([api.getAccounts(), api.getTransactions(), api.getCategories()])
-      .then(([a, t, c]) => { setAccounts(a); setTransactions(t); setCategories(c); })
+      .then(([a, t, c]) => {
+        if (typeof window !== 'undefined') (window as any).__GLOBAL_CATEGORIES__ = c;
+        setAccounts(a); setTransactions(t); setCategories(c);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   };

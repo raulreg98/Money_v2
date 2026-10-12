@@ -34,17 +34,14 @@ export function resolveCategory(
   categoryId: number | string | null | undefined,
   categories: Category[]
 ): { id: number | null; name: string; color: string; icon: string | null; parent_id: number | null } {
-  if (!categoryId || !categories || categories.length === 0) {
+  if (!categoryId) {
     return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
   }
 
-  const catIdNum = typeof categoryId === 'string' ? parseInt(categoryId, 10) : categoryId;
-  if (isNaN(catIdNum)) {
-    return { id: null, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
-  }
+  const catList = categories && categories.length > 0 ? categories : (typeof window !== 'undefined' ? (window as any).__GLOBAL_CATEGORIES__ || [] : []);
 
-  for (const cat of categories) {
-    if (cat.id === catIdNum) {
+  for (const cat of catList) {
+    if (String(cat.id) === String(categoryId)) {
       return {
         id: cat.id,
         name: cat.name,
@@ -54,7 +51,7 @@ export function resolveCategory(
       };
     }
     if ((cat as any).subcategories && Array.isArray((cat as any).subcategories)) {
-      const sub = (cat as any).subcategories.find((s: any) => s.id === catIdNum);
+      const sub = (cat as any).subcategories.find((s: any) => String(s.id) === String(categoryId));
       if (sub) {
         return {
           id: sub.id,
@@ -67,5 +64,5 @@ export function resolveCategory(
     }
   }
 
-  return { id: catIdNum, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
+  return { id: categoryId as any, name: 'Sin categoría', color: '#6b7280', icon: 'folder', parent_id: null };
 }
