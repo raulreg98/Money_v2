@@ -1,17 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Category, Transaction, Account } from '@/types';
 import { Card } from '@/components/Card';
 import { CategoryBadge } from '@/components/CategorySelector';
 import { formatEUR, formatDate, formatAxisEUR, CHART_COLORS } from '@/lib/format';
 import { prepareCategoryExpensesChartData } from '@/lib/chartData';
 import { resolveCategory } from '@/lib/categories';
+import { api } from '@/lib/api';
 import { PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer, Tooltip, Legend, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface CategoryExpensesChartProps {
   title?: string;
   transactions: Transaction[];
-  categories: Category[];
+  categories?: Category[];
   accounts: Account[];
   accountId?: number | null;
   dateRange?: { desde?: string; hasta?: string } | null;
@@ -64,16 +65,24 @@ export function getCategoryTransactions(
 export function CategoryExpensesChart({
   title = 'Gastos por categoría',
   transactions,
-  categories,
+  categories: categoriesProp,
   accounts,
   accountId = null,
   dateRange = null,
   showAccountSelector = false,
 }: CategoryExpensesChartProps) {
+  const [fetchedCategories, setFetchedCategories] = useState<Category[]>([]);
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>(accountId ? String(accountId) : '');
   const [chartType, setChartType] = useState<'donut' | 'bar'>('donut');
   const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!categoriesProp || categoriesProp.length === 0) {
+      api.getCategories().then(setFetchedCategories).catch(() => {});
+    }
+  }, [categoriesProp]);
+
+  const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : fetchedCategories;
   const activeAccountId = selectedAccountFilter ? parseInt(selectedAccountFilter) : accountId;
 
   const chartData = useMemo(() => {
