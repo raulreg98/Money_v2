@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Category } from '@/types';
 import { api } from '@/lib/api';
 import { resolveCategory as resolveCategoryLib } from '@/lib/categories';
@@ -35,9 +35,9 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchCats();
   }, []);
 
-  const resolve = (categoryId: number | string | null | undefined) => {
+  const resolve = useCallback((categoryId: number | string | null | undefined) => {
     return resolveCategoryLib(categoryId, categories);
-  };
+  }, [categories]);
 
   return (
     <CategoryContext.Provider value={{ categories, loading, resolveCategory: resolve, refreshCategories: fetchCats }}>
