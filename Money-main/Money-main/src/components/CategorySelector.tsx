@@ -5,16 +5,19 @@ import { getIcon, suggestIcon } from '@/lib/categoryIcons';
 import { api } from '@/lib/api';
 import { formatEUR } from '@/lib/format';
 import { getCategoryColor } from '@/lib/chartData';
+import { useCategoryContext } from '@/context/CategoryContext';
 
 interface Props {
-  categories: Category[];
+  categories?: Category[];
   value: string;
   onChange: (val: string) => void;
   allowEmpty?: boolean;
   onCreateCategory?: (name: string, parentId: number | null) => Promise<void>;
 }
 
-export function CategorySelector({ categories, value, onChange, allowEmpty, onCreateCategory }: Props) {
+export function CategorySelector({ categories: categoriesProp, value, onChange, allowEmpty, onCreateCategory }: Props) {
+  const { categories: contextCategories } = useCategoryContext();
+  const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : contextCategories;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -191,7 +194,10 @@ export function CategorySelector({ categories, value, onChange, allowEmpty, onCr
   );
 }
 
-export function CategoryBadge({ category, categories = [], size = 'sm' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
+export function CategoryBadge({ category, categories: categoriesProp, size = 'sm' }: { category: Category | null | undefined; categories?: Category[]; size?: 'xs' | 'sm' }) {
+  const { categories: contextCategories } = useCategoryContext();
+  const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : contextCategories;
+
   if (!category) return <span className="text-slate-600 text-sm">—</span>;
   const Icon = getIcon(category.icon) || getIcon(suggestIcon(category.name));
   const cls = size === 'xs' ? 'w-3.5 h-3.5' : 'w-4 h-4';
