@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import type { Account, Transaction, Category } from '@/types';
 import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
+import { AccountSelector } from '@/components/AccountSelector';
 import { CategoryExpensesChart } from '@/components/CategoryExpensesChart';
 import { resolveCategory } from '@/lib/categories';
 import { useCategoryContext } from '@/context/CategoryContext';
@@ -623,7 +624,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                               {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
                             </div>
                           </td>
-                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} categories={activeCategories} size="xs" /></td>
+                          <td className="px-5 py-2.5"></td>
                           <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                           <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
                           <td className="px-5 py-2.5 text-right">
@@ -656,7 +657,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                         <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
                         <td className="px-5 py-2.5"><TxBadge type={t.type} /></td>
                         <td className="px-5 py-2.5 text-slate-400">
-                          {t.note || '—'}
+                          {t.note || ''}
                           {toAccName && <span className="text-slate-600"> → {toAccName}</span>}
                         </td>
                         <td className="px-5 py-2.5">
@@ -712,7 +713,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
 
                 const detailText = isTransfer
                   ? `${accName(t.account_id)} → ${accName(t.to_account_id || t.account_id)}${t.note ? ` (${t.note})` : ''}`
-                  : (t.note || '—');
+                  : (t.note || '');
 
                 return (
                   <div
@@ -722,7 +723,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400 text-xs font-medium">{formatDate(t.date)}</span>
-                      <CategoryBadge category={catById(t.category_id)} categories={activeCategories} size="xs" />
+                      {!isTransfer && <CategoryBadge category={catById(t.category_id)} categories={activeCategories} size="xs" />}
                     </div>
                     <p className="text-white text-sm font-medium truncate">{detailText}</p>
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/40">
@@ -790,8 +791,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ title, onClose, onSave, saving, error, children }: { title: string; onClose: () => void; onSave: () => void; saving: boolean; error: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center sm:justify-center justify-end flex-col sm:flex-row px-0 sm:px-4" onClick={onClose}>
-      <div className="bg-slate-900 sm:rounded-2xl rounded-t-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] min-h-[400px] overflow-y-auto pb-28 sm:pb-6 animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{title}</h2>
         {children}
         {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -927,8 +928,8 @@ export function AddTransactionModal({ existingTx, accounts, categories, defaultA
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center sm:justify-center justify-end flex-col sm:flex-row px-0 sm:px-4" onClick={onClose}>
-      <div className="bg-slate-900 sm:rounded-2xl rounded-t-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] min-h-[400px] overflow-y-auto pb-28 sm:pb-6 animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{existingTx ? "Editar transacción" : "Nueva transacción"}</h2>
 
         <div className="grid grid-cols-2 gap-3">
@@ -941,16 +942,21 @@ export function AddTransactionModal({ existingTx, accounts, categories, defaultA
         </div>
         <Field label="Importe (€)"><input type="number" inputMode="decimal" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} /></Field>
         <Field label="Cuenta">
-          <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className={inputCls}>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          <AccountSelector
+            accounts={accounts}
+            value={accountId}
+            onChange={setAccountId}
+          />
         </Field>
         {type === 'transferencia' && (
           <Field label="Cuenta destino">
-            <select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} className={inputCls}>
-              <option value="">Seleccionar…</option>
-              {accounts.filter((a) => a.id.toString() !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            <AccountSelector
+              accounts={accounts.filter((a) => a.id.toString() !== accountId)}
+              value={toAccountId}
+              onChange={setToAccountId}
+              allowEmpty
+              emptyLabel="Seleccionar cuenta destino…"
+            />
           </Field>
         )}
         {type !== 'transferencia' && (
