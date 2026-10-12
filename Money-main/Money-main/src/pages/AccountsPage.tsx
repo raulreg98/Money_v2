@@ -338,7 +338,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   };
 
   const accName = (id: number) => accList.find((a: any) => a.id === id)?.name || '—';
-  const catById = (id: number | null) => {
+  const catById = (id: any) => {
     return resolveCategoryFromContext(id) as any;
   };
 
