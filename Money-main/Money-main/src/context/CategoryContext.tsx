@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Category } from '@/types';
 import { api } from '@/lib/api';
-import { resolveCategory as resolveCategoryLib, setCachedCategories } from '@/lib/categories';
+import { resolveCategory as resolveCategoryLib } from '@/lib/categories';
 
 interface CategoryContextType {
   categories: Category[];
@@ -25,7 +25,6 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const cats = await api.getCategories();
       setCategories(cats);
-      setCachedCategories(cats);
     } catch {
     } finally {
       setLoading(false);
