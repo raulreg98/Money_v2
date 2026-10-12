@@ -273,7 +273,11 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
     );
   }
 
-  const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
+  const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories: apiCategories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
+
+  const activeCategories = (contextCategories && contextCategories.length > 0)
+    ? contextCategories
+    : (apiCategories && apiCategories.length > 0 ? apiCategories : []);
 
   const handleAdjustBalance = async () => {
     const target = parseFloat(targetBalance);
@@ -339,7 +343,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
 
   const accName = (id: number) => accList.find((a: any) => a.id === id)?.name || '—';
   const catById = (id: any) => {
-    return resolveCategoryFromContext(id) as any;
+    return resolveCategory(id, activeCategories);
   };
 
   const donutData = gastosPorCategoria;
@@ -460,7 +464,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         <CategoryExpensesChart
           title="Gastos por categoría"
           transactions={transactions}
-          categories={categories}
+          categories={activeCategories}
           accounts={accList}
           accountId={accountId}
           dateRange={periodToRange(period)}
@@ -519,10 +523,10 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
               <option value="ingreso">Ingreso</option>
               <option value="transferencia">Transferencia</option>
             </select>
-            {categories.length > 0 && (
+            {activeCategories.length > 0 && (
               <div className="min-w-[160px]">
                 <CategorySelector
-                  categories={categories}
+                  categories={activeCategories}
                   value={txCat}
                   onChange={setTxCat}
                   allowEmpty
@@ -544,7 +548,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           {bulkCategory && (
             <div className="flex items-center gap-2">
               <CategorySelector
-                categories={categories}
+                categories={activeCategories}
                 value={bulkCategoryId}
                 onChange={setBulkCategoryId}
                 allowEmpty
@@ -609,7 +613,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                               {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
                             </div>
                           </td>
-                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} categories={categories} size="xs" /></td>
+                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} categories={activeCategories} size="xs" /></td>
                           <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                           <td className="px-5 py-2.5 text-right font-medium text-slate-300">{runningBal != null ? formatEUR(runningBal) : '—'}</td>
                           <td className="px-5 py-2.5 text-right">
@@ -659,7 +663,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
                             className="hover:opacity-80 transition-opacity text-left"
                             title="Cambiar categoría"
                           >
-                            <CategoryBadge category={catById(t.category_id)} categories={categories} size="xs" />
+                            <CategoryBadge category={catById(t.category_id)} categories={activeCategories} size="xs" />
                           </button>
                         </td>
                         <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
@@ -711,8 +715,8 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <p className="text-slate-400 text-xs mt-1">Se creará una transacción de ingreso o gasto por la diferencia para ajustar el saldo real.</p>
         </Modal>
       )}
-      {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
-      {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={categories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
+      {showAddTx && <AddTransactionModal accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={activeCategories} defaultAccountId={accountId} onClose={() => { setShowAddTx(false); loadSummary(); }} />}
+      {editingTx && <AddTransactionModal existingTx={editingTx} accounts={accList.map((a: any) => ({ ...a, currency: 'EUR', initial_balance: 0, color: '#3b82f6', archived: 0, exclude_from_net_worth: 0, created_at: '', updated_at: '' }))} categories={activeCategories} onClose={() => { setEditingTx(null); loadSummary(); }} />}
       {editingAccount && <EditAccountModal account={account} onClose={() => { setEditingAccount(false); loadSummary(); }} />}
     </div>
   );
