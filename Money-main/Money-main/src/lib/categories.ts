@@ -30,15 +30,29 @@ export function matchesCategory(
   return false;
 }
 
+let cachedCategories: Category[] = [];
+
+export function setCachedCategories(cats: Category[]) {
+  if (cats && cats.length > 0) {
+    cachedCategories = cats;
+  }
+}
+
 export function resolveCategory(
   categoryId: number | string | null | undefined,
-  categories: Category[]
+  categories?: Category[]
 ): { id: number | null; name: string; color: string; icon: string | null; parent_id: number | null } {
-  if (!categoryId || !categories || categories.length === 0) {
-    return { id: categoryId ? Number(categoryId) : null, name: 'Sin categoría', color: '#6b7280', icon: null, parent_id: null };
+  if (!categoryId) {
+    return { id: null, name: 'Sin categoría', color: '#6b7280', icon: null, parent_id: null };
   }
 
-  for (const cat of categories) {
+  const catList = (categories && categories.length > 0) ? categories : cachedCategories;
+
+  if (!catList || catList.length === 0) {
+    return { id: Number(categoryId) || null, name: 'Sin categoría', color: '#6b7280', icon: null, parent_id: null };
+  }
+
+  for (const cat of catList) {
     if (String(cat.id) === String(categoryId)) {
       return {
         id: cat.id,
