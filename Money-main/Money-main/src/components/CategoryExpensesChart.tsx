@@ -18,6 +18,7 @@ interface CategoryExpensesChartProps {
   accountId?: number | null;
   dateRange?: { desde?: string; hasta?: string } | null;
   showAccountSelector?: boolean;
+  onRefresh?: () => void;
 }
 
 export function getCategoryTransactions(
@@ -71,12 +72,25 @@ export function CategoryExpensesChart({
   accountId = null,
   dateRange = null,
   showAccountSelector = false,
+  onRefresh,
 }: CategoryExpensesChartProps) {
   const { categories: contextCategories } = useCategoryContext();
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>(accountId ? String(accountId) : '');
   const [chartType, setChartType] = useState<'donut' | 'bar'>('donut');
   const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
   const [selectedSlice, setSelectedSlice] = useState<{ name: string; value: number; color: string } | null>(null);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkTouch = () => {
+        setIsTouchDevice(window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || window.innerWidth < 768);
+      };
+      checkTouch();
+      window.addEventListener('resize', checkTouch);
+      return () => window.removeEventListener('resize', checkTouch);
+    }
+  }, []);
 
   const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : contextCategories;
   const activeAccountId = selectedAccountFilter ? parseInt(selectedAccountFilter) : accountId;
@@ -145,6 +159,8 @@ export function CategoryExpensesChart({
                   cy="50%"
                   outerRadius={100}
                   innerRadius={62}
+                  stroke="#0f172a"
+                  strokeWidth={2}
                   className="cursor-pointer"
                 >
                   {chartData.map((entry, i) => (
@@ -155,14 +171,17 @@ export function CategoryExpensesChart({
                     />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
-                  labelStyle={{ color: '#cbd5e1' }}
-                  formatter={(v: any, name: any, item: any) => [
-                    <span key="v" style={{ color: item?.payload?.color || '#ffffff', fontWeight: 600 }}>{formatEUR(Number(v))}</span>,
-                    name
-                  ]}
-                />
+                {!isTouchDevice && (
+                  <Tooltip
+                    wrapperStyle={{ pointerEvents: 'none' }}
+                    contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                    labelStyle={{ color: '#cbd5e1' }}
+                    formatter={(v: any, name: any, item: any) => [
+                      <span key="v" style={{ color: item?.payload?.color || '#ffffff', fontWeight: 600 }}>{formatEUR(Number(v))}</span>,
+                      name
+                    ]}
+                  />
+                )}
               </PieChart>
             </ResponsiveContainer>
             {/* Center Total / Selection Overlay */}
@@ -238,6 +257,7 @@ export function CategoryExpensesChart({
           accounts={accounts}
           categories={categories}
           onClose={() => setSelectedCatName(null)}
+          onRefresh={onRefresh}
         />
       )}
     </Card>
@@ -250,12 +270,14 @@ export function ExpenseCategoryModal({
   accounts,
   categories,
   onClose,
+  onRefresh,
 }: {
   categoryName: string;
   transactions: Transaction[];
   accounts: Account[];
   categories: Category[];
   onClose: () => void;
+  onRefresh?: () => void;
 }) {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const accName = (id: number) => accounts.find(a => a.id === id)?.name || '—';
@@ -327,7 +349,7 @@ export function ExpenseCategoryModal({
             categories={categories}
             onClose={() => {
               setEditingTx(null);
-              onClose();
+              if (onRefresh) onRefresh();
             }}
           />
         )}

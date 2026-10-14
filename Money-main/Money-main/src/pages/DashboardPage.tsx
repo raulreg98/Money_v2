@@ -40,7 +40,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const loadData = () => {
     Promise.all([
       api.getDashboard(),
       api.getPortfolioSummary(),
@@ -57,7 +57,9 @@ export function DashboardPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const filteredTransactions = useMemo(() => {
     const startDate = getStartDate(dateRange);
@@ -217,7 +219,7 @@ export function DashboardPage() {
                       <tr key={t.id} className="border-b border-slate-800/50">
                         <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
                         <td className="px-5 py-2.5 text-slate-400">{accName(t.account_id)}</td>
-                        <td className="px-5 py-2.5 text-slate-400">{t.note || '—'}</td>
+                        <td className="px-5 py-2.5 text-slate-400">{t.note || ''}</td>
                         <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
                         <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                       </tr>
@@ -276,7 +278,7 @@ export function DashboardPage() {
                       <span className={`text-sm font-semibold shrink-0 ${color}`}>{displayAmount}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
-                      <span className="truncate">{t.note || '—'}</span>
+                      <span className="truncate">{t.note || ''}</span>
                       <span className="shrink-0">{formatDate(t.date)}</span>
                     </div>
                   </div>
@@ -320,6 +322,7 @@ export function DashboardPage() {
         categories={categories}
         accounts={accounts}
         showAccountSelector
+        onRefresh={loadData}
       />
 
       {summary && summary.productDetails.length > 0 && (

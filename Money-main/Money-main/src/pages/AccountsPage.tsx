@@ -478,6 +478,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           accounts={accList}
           accountId={accountId}
           dateRange={periodToRange(period)}
+          onRefresh={loadSummary}
         />
       </div>
 
