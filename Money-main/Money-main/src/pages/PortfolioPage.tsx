@@ -105,7 +105,7 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
     let valA: any = 0;
     let valB: any = 0;
 
-    if (sortField === 'name') { valA = a.name; valB = b.name; }
+    if (sortField === 'name') { valA = a.alias || a.name; valB = b.alias || b.name; }
     else if (sortField === 'type') { valA = PRODUCT_TYPES[a.type] || a.type; valB = PRODUCT_TYPES[b.type] || b.type; }
     else if (sortField === 'account') { valA = accounts.find(ac => ac.id === a.account_id)?.name || ''; valB = accounts.find(ac => ac.id === b.account_id)?.name || ''; }
     else if (sortField === 'value') { valA = da?.value || 0; valB = db?.value || 0; }
@@ -250,7 +250,8 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
                   <tr
                     key={p.id}
                     onClick={() => onSelect(p.id)}
-                    className="border-b border-slate-800/50 hover:bg-slate-800/40 cursor-pointer transition-colors"
+                    className="border-b border-slate-800/50 hover:bg-slate-800/60 cursor-pointer transition-colors"
+                    style={{ backgroundColor: `${p.color || '#3b82f6'}18` }}
                   >
                     <td className="px-5 py-3 text-white font-medium flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || '#3b82f6' }} />
@@ -298,7 +299,8 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
                 <div
                   key={p.id}
                   onClick={() => onSelect(p.id)}
-                  className="p-4 space-y-2 cursor-pointer active:bg-slate-800/50 transition-colors"
+                  className="p-4 space-y-2 cursor-pointer active:bg-slate-800/50 transition-colors border-b border-slate-800/50"
+                  style={{ backgroundColor: `${p.color || '#3b82f6'}18` }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -352,26 +354,54 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
               className="bg-slate-800 text-slate-200 text-xs rounded border border-slate-700 px-2 py-1 outline-none"
             >
               <option value="">Todos los productos</option>
-              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {products.map(p => <option key={p.id} value={p.id}>{p.alias || p.name}</option>)}
             </select>
           </div>
         </div>
         {filteredMovements.length === 0 ? (
           <p className="text-slate-500 text-sm p-5">Sin aportaciones registradas</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-            <thead>
-              <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
-                <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('date')}>Fecha {movSortField === 'date' ? (movSortAsc ? '▲' : '▼') : ''}</th>
-                <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('product')}>Producto {movSortField === 'product' ? (movSortAsc ? '▲' : '▼') : ''}</th>
-                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('amount')}>Dinero aportado (€) {movSortField === 'amount' ? (movSortAsc ? '▲' : '▼') : ''}</th>
-                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('value')}>Valor actual (€) {movSortField === 'value' ? (movSortAsc ? '▲' : '▼') : ''}</th>
-                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('gain')}>Ganancia (€) {movSortField === 'gain' ? (movSortAsc ? '▲' : '▼') : ''}</th>
-                <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('ret')}>Rentabilidad (%) {movSortField === 'ret' ? (movSortAsc ? '▲' : '▼') : ''}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Desktop View (hidden sm:block) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-slate-400 text-left border-b border-slate-800 cursor-pointer select-none">
+                    <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('date')}>Fecha {movSortField === 'date' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                    <th className="px-5 py-2 font-medium hover:text-white" onClick={() => handleMovSort('product')}>Producto {movSortField === 'product' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                    <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('amount')}>Dinero aportado (€) {movSortField === 'amount' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                    <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('value')}>Valor actual (€) {movSortField === 'value' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                    <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('gain')}>Ganancia (€) {movSortField === 'gain' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                    <th className="px-5 py-2 font-medium text-right hover:text-white" onClick={() => handleMovSort('ret')}>Rentabilidad (%) {movSortField === 'ret' ? (movSortAsc ? '▲' : '▼') : ''}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMovements.map((m: any) => {
+                    const prod = products.find(p => p.id === m.product_id);
+                    const d = detailMap.get(m.product_id);
+                    const unitPrice = d?.price || (d?.units ? d.value / d.units : 0);
+                    const currentValueMov = m.units ? m.units * unitPrice : m.amount_eur;
+                    const gainMov = currentValueMov - m.amount_eur;
+                    const retMov = m.amount_eur > 0 ? (gainMov / m.amount_eur) * 100 : 0;
+                    const color = gainMov > 0 ? 'text-emerald-400' : gainMov < 0 ? 'text-red-400' : 'text-slate-400';
+
+                    return (
+                      <tr key={m.id} className="border-b border-slate-800/50">
+                        <td className="px-5 py-2.5 text-slate-300">{formatDate(m.date)}</td>
+                        <td className="px-5 py-2.5 text-white font-medium">{prod?.alias || prod?.name || '—'}</td>
+                        <td className="px-5 py-2.5 text-right text-slate-300">{formatEUR(m.amount_eur)}</td>
+                        <td className="px-5 py-2.5 text-right text-slate-200">{formatEUR(currentValueMov)}</td>
+                        <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(gainMov, { sign: true })}</td>
+                        <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatPercent(retMov)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View (sm:hidden) */}
+            <div className="sm:hidden divide-y divide-slate-800/60">
               {filteredMovements.map((m: any) => {
                 const prod = products.find(p => p.id === m.product_id);
                 const d = detailMap.get(m.product_id);
@@ -382,19 +412,31 @@ function ProductList({ onSelect }: { onSelect: (id: number) => void }) {
                 const color = gainMov > 0 ? 'text-emerald-400' : gainMov < 0 ? 'text-red-400' : 'text-slate-400';
 
                 return (
-                  <tr key={m.id} className="border-b border-slate-800/50">
-                    <td className="px-5 py-2.5 text-slate-300">{formatDate(m.date)}</td>
-                    <td className="px-5 py-2.5 text-white font-medium">{prod?.name || '—'}</td>
-                    <td className="px-5 py-2.5 text-right text-slate-300">{formatEUR(m.amount_eur)}</td>
-                    <td className="px-5 py-2.5 text-right text-slate-200">{formatEUR(currentValueMov)}</td>
-                    <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatEUR(gainMov, { sign: true })}</td>
-                    <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{formatPercent(retMov)}</td>
-                  </tr>
+                  <div key={m.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white font-medium text-sm truncate">{prod?.alias || prod?.name || '—'}</span>
+                      <span className="text-slate-400 text-xs shrink-0">{formatDate(m.date)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/40">
+                      <div>
+                        <span className="text-slate-500 block">Aportado / Actual</span>
+                        <span className="text-slate-200 font-semibold text-sm">{formatEUR(m.amount_eur)}</span>
+                        <span className="text-slate-400 text-xs ml-1.5">({formatEUR(currentValueMov)})</span>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-slate-500 block">G/P (%)</span>
+                        <span className={`font-semibold text-sm ${color}`}>
+                          {formatEUR(gainMov, { sign: true })} ({formatPercent(retMov)})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-          </div>
+            </div>
+          </>
         )}
       </Card>
 
@@ -797,49 +839,63 @@ function ProductDetail({ productId, onBack }: { productId: number; onBack: () =>
         {movements.length === 0 ? (
           <p className="text-slate-500 text-sm p-5">Sin movimientos</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-slate-400 text-left border-b border-slate-800">
-                <th className="px-5 py-2 font-medium">Fecha</th>
-                <th className="px-5 py-2 font-medium">Tipo</th>
-                <th className="px-5 py-2 font-medium text-right">Unidades</th>
-                <th className="px-5 py-2 font-medium text-right">Importe</th>
-                <th className="px-5 py-2 font-medium text-right">Comisión</th>
-                <th className="px-5 py-2 font-medium">Nota</th>
-                <th className="px-5 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {movements.map((m) => (
-                <tr key={m.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                  <td className="px-5 py-2.5 text-slate-300">{formatDate(m.date)}</td>
-                  <td className="px-5 py-2.5"><MovementBadge type={m.type} /></td>
-                  <td className="px-5 py-2.5 text-right text-slate-400">{m.units ? formatUnits(m.units) : '—'}</td>
-                  <td className="px-5 py-2.5 text-right text-slate-200">{formatEUR(m.amount_eur)}</td>
-                  <td className="px-5 py-2.5 text-right text-slate-400">{m.fee ? formatEUR(m.fee) : '—'}</td>
-                  <td className="px-5 py-2.5 text-slate-500 text-xs max-w-32 truncate">{m.note || ''}</td>
-                  <td className="px-5 py-2.5 text-right">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => setEditingMovement(m)}
-                        className="text-slate-600 hover:text-blue-400 transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={async () => { await api.deleteMovement(m.id); reload(); }}
-                        className="text-slate-600 hover:text-red-400 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-slate-400 text-left border-b border-slate-800">
+                  <th className="px-5 py-2 font-medium">Fecha</th>
+                  <th className="px-5 py-2 font-medium">Tipo</th>
+                  <th className="px-5 py-2 font-medium text-right">Unidades</th>
+                  <th className="px-5 py-2 font-medium text-right">Importe</th>
+                  <th className="px-5 py-2 font-medium text-right">Comisión</th>
+                  <th className="px-5 py-2 font-medium text-right">Ganancia (€)</th>
+                  <th className="px-5 py-2 font-medium text-right">Rentabilidad (%)</th>
+                  <th className="px-5 py-2 font-medium">Nota</th>
+                  <th className="px-5 py-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {movements.map((m) => {
+                  const unitPrice = latestPrice?.price || averageCost || 0;
+                  const valueMov = m.units ? m.units * unitPrice : m.amount_eur;
+                  const gainMov = valueMov - m.amount_eur;
+                  const retMov = m.amount_eur > 0 ? (gainMov / m.amount_eur) * 100 : 0;
+                  const gainColorMov = gainMov > 0 ? 'text-emerald-400' : gainMov < 0 ? 'text-red-400' : 'text-slate-400';
+
+                  return (
+                    <tr key={m.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-5 py-2.5 text-slate-300">{formatDate(m.date)}</td>
+                      <td className="px-5 py-2.5"><MovementBadge type={m.type} /></td>
+                      <td className="px-5 py-2.5 text-right text-slate-400">{m.units ? formatUnits(m.units) : '—'}</td>
+                      <td className="px-5 py-2.5 text-right text-slate-200">{formatEUR(m.amount_eur)}</td>
+                      <td className="px-5 py-2.5 text-right text-slate-400">{m.fee ? formatEUR(m.fee) : '—'}</td>
+                      <td className={`px-5 py-2.5 text-right font-medium ${gainColorMov}`}>{formatEUR(gainMov, { sign: true })}</td>
+                      <td className={`px-5 py-2.5 text-right font-medium ${gainColorMov}`}>{formatPercent(retMov)}</td>
+                      <td className="px-5 py-2.5 text-slate-500 text-xs max-w-32 truncate">{m.note || ''}</td>
+                      <td className="px-5 py-2.5 text-right">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            onClick={() => setEditingMovement(m)}
+                            className="text-slate-600 hover:text-blue-400 transition-colors"
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={async () => { await api.deleteMovement(m.id); reload(); }}
+                            className="text-slate-600 hover:text-red-400 transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
 
@@ -1234,7 +1290,7 @@ function AddMovementModal({ productId, existing, onClose }: { productId: number;
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{existing ? 'Editar movimiento' : 'Nuevo movimiento'}</h2>
         <div className="grid grid-cols-2 gap-3">

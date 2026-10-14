@@ -303,7 +303,7 @@ function TagModal({ tag, onClose }: { tag?: Tag; onClose: () => void }) {
   const inputCls = 'w-full bg-slate-800 text-white rounded-lg px-3 py-2 text-sm border border-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors';
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{tag ? 'Editar tag' : 'Nuevo tag'}</h2>
         <div><label className="block text-sm font-medium text-slate-300 mb-1.5">Nombre</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} autoFocus /></div>

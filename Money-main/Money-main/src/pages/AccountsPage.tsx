@@ -156,8 +156,8 @@ function AccountSection({ title, subtotal, accounts, accountBalance, onSelect, o
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {accounts.map((acc) => {
           const bal = accountBalance(acc);
-          const cardBg = acc.color ? `${acc.color}18` : undefined;
-          const cardBorder = acc.color ? `${acc.color}40` : undefined;
+          const cardBg = acc.color ? `${acc.color}22` : undefined;
+          const cardBorder = acc.color ? `${acc.color}45` : undefined;
           return (
             <Card
               key={acc.id}
@@ -360,7 +360,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const donutTotal = donutData.reduce((s: number, d: any) => s + d.value, 0);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 rounded-2xl border transition-colors" style={{ backgroundColor: `${account.color}10`, borderColor: `${account.color}25` }}>
+    <div className="space-y-6 p-4 sm:p-6 rounded-2xl border transition-colors" style={{ backgroundColor: `${account.color}15`, borderColor: `${account.color}35` }}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
@@ -928,7 +928,7 @@ export function AddTransactionModal({ existingTx, accounts, categories, defaultA
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-white font-semibold text-lg">{existingTx ? "Editar transacción" : "Nueva transacción"}</h2>
 

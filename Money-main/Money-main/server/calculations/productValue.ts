@@ -27,17 +27,12 @@ export function computeProductValueAtDate(
 
   const value = price !== null ? fifo.remainingUnits * price : 0;
 
-  let invested = 0;
-  for (const m of movementsUpTo) {
-    if (m.type === 'compra' || m.type === 'saldo') invested += m.amount_eur;
-  }
-
   return {
     date,
     units: fifo.remainingUnits,
     price,
     value,
-    invested,
+    invested: fifo.totalCost,
     source,
   };
 }
@@ -69,12 +64,7 @@ export function computeProductSeries(
 
     const value = price !== null ? fifo.remainingUnits * price : 0;
 
-    let invested = 0;
-    for (const m of movementsUpTo) {
-      if (m.type === 'compra' || m.type === 'saldo') invested += m.amount_eur;
-    }
-
-    result.push({ date: dateStr, units: fifo.remainingUnits, price, value, invested, source });
+    result.push({ date: dateStr, units: fifo.remainingUnits, price, value, invested: fifo.totalCost, source });
   }
 
   return result;

@@ -76,6 +76,7 @@ export function CategoryExpensesChart({
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>(accountId ? String(accountId) : '');
   const [chartType, setChartType] = useState<'donut' | 'bar'>('donut');
   const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
+  const [selectedSlice, setSelectedSlice] = useState<{ name: string; value: number; color: string } | null>(null);
 
   const categories = (categoriesProp && categoriesProp.length > 0) ? categoriesProp : contextCategories;
   const activeAccountId = selectedAccountFilter ? parseInt(selectedAccountFilter) : accountId;
@@ -83,6 +84,10 @@ export function CategoryExpensesChart({
   const chartData = useMemo(() => {
     return prepareCategoryExpensesChartData(transactions, categories, activeAccountId, dateRange);
   }, [transactions, categories, activeAccountId, dateRange]);
+
+  const chartDataTotal = useMemo(() => {
+    return chartData.reduce((s, d) => s + d.value, 0);
+  }, [chartData]);
 
   const modalTransactions = useMemo(() => {
     if (!selectedCatName) return [];
@@ -128,37 +133,77 @@ export function CategoryExpensesChart({
       {chartData.length === 0 ? (
         <p className="text-slate-500 text-sm text-center py-12">Sin gastos para mostrar</p>
       ) : chartType === 'donut' ? (
-        <ResponsiveContainer width="100%" height={260}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={90}
-              innerRadius={45}
-              className="cursor-pointer"
-            >
-              {chartData.map((entry, i) => (
-                <Cell
-                  key={i}
-                  fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]}
-                  onClick={() => setSelectedCatName(entry.name)}
+        <div className="space-y-4">
+          <div className="relative flex items-center justify-center">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  innerRadius={62}
+                  className="cursor-pointer"
+                >
+                  {chartData.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.color || CHART_COLORS[i % CHART_COLORS.length]}
+                      onClick={() => setSelectedSlice(selectedSlice?.name === entry.name ? null : entry)}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                  labelStyle={{ color: '#cbd5e1' }}
+                  formatter={(v: any, name: any, item: any) => [
+                    <span key="v" style={{ color: item?.payload?.color || '#ffffff', fontWeight: 600 }}>{formatEUR(Number(v))}</span>,
+                    name
+                  ]}
                 />
-              ))}
-            </Pie>
-            <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
-              labelStyle={{ color: '#cbd5e1' }}
-              formatter={(v: any, name: any, item: any) => [
-                <span key="v" style={{ color: item?.payload?.color || '#ffffff', fontWeight: 600 }}>{formatEUR(Number(v))}</span>,
-                name
-              ]}
-            />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-          </PieChart>
-        </ResponsiveContainer>
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Center Total / Selection Overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              {selectedSlice ? (
+                <>
+                  <span className="text-slate-300 text-xs font-medium truncate max-w-[120px]">{selectedSlice.name}</span>
+                  <span className="text-white font-bold text-base sm:text-lg">{formatEUR(selectedSlice.value)}</span>
+                  <span className="text-slate-400 text-xs font-semibold">
+                    {chartDataTotal > 0 ? ((selectedSlice.value / chartDataTotal) * 100).toFixed(0) : '0'}%
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-slate-400 text-xs font-medium uppercase tracking-wider">Gasto Total</span>
+                  <span className="text-white font-bold text-lg sm:text-xl">{formatEUR(chartDataTotal)}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Pill Badge Legend Grid */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-slate-800/80">
+            {chartData.map((cat) => {
+              const totalVal = chartData.reduce((s, d) => s + d.value, 0);
+              const pct = totalVal > 0 ? ((cat.value / totalVal) * 100).toFixed(0) : '0';
+              return (
+                <button
+                  key={cat.name}
+                  type="button"
+                  onClick={() => setSelectedCatName(cat.name)}
+                  className="flex items-center gap-2 bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 rounded-full px-3 py-1 text-xs text-slate-200 transition-colors cursor-pointer"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="font-medium truncate max-w-[120px]">{cat.name}</span>
+                  <span className="text-slate-400 font-semibold">{pct}%</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
