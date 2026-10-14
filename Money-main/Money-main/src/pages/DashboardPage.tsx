@@ -7,6 +7,27 @@ import { CategoryBadge } from '@/components/CategorySelector';
 import { CategoryExpensesChart } from '@/components/CategoryExpensesChart';
 import { Wallet, Briefcase, TrendingUp, PiggyBank, Landmark, ArrowRight } from 'lucide-react';
 
+type DateRange = '1M' | '3M' | '6M' | '1A' | 'TODO';
+const DATE_RANGES: { id: DateRange; label: string }[] = [
+  { id: '1M', label: '1M' },
+  { id: '3M', label: '3M' },
+  { id: '6M', label: '6M' },
+  { id: '1A', label: '1A' },
+  { id: 'TODO', label: 'Todo' },
+];
+
+function getStartDate(range: DateRange): string {
+  const d = new Date();
+  switch (range) {
+    case '1M': d.setMonth(d.getMonth() - 1); break;
+    case '3M': d.setMonth(d.getMonth() - 3); break;
+    case '6M': d.setMonth(d.getMonth() - 6); break;
+    case '1A': d.setFullYear(d.getFullYear() - 1); break;
+    case 'TODO': return '2015-01-01';
+  }
+  return d.toISOString().slice(0, 10);
+}
+
 export function DashboardPage() {
   const [dash, setDash] = useState<DashboardData | null>(null);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
@@ -15,8 +36,7 @@ export function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [txLimit, setTxLimit] = useState<number>(5);
   const [accountFilter, setAccountFilter] = useState<string>('');
-  const [catChartType, setCatChartType] = useState<'donut' | 'bar'>('donut');
-  const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>('1M');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,10 +60,14 @@ export function DashboardPage() {
   }, []);
 
   const filteredTransactions = useMemo(() => {
-    if (!accountFilter) return transactions;
-    const accId = parseInt(accountFilter);
-    return transactions.filter(t => t.account_id === accId || t.to_account_id === accId);
-  }, [transactions, accountFilter]);
+    const startDate = getStartDate(dateRange);
+    return transactions.filter(t => {
+      if (t.date < startDate) return false;
+      if (!accountFilter) return true;
+      const accId = parseInt(accountFilter);
+      return t.account_id === accId || t.to_account_id === accId;
+    });
+  }, [transactions, accountFilter, dateRange]);
 
   const categoryChartData = useMemo(() => {
     const map = new Map<string, { name: string; value: number; color: string; icon?: string | null }>();
@@ -85,9 +109,26 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Panel general</h1>
-        <p className="text-slate-400 text-sm mt-1">Resumen de tu patrimonio</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Panel general</h1>
+          <p className="text-slate-400 text-sm mt-1">Resumen de tu patrimonio</p>
+        </div>
+        <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+          {DATE_RANGES.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => setDateRange(r.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                dateRange === r.id
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Card className="overflow-hidden">
@@ -123,66 +164,126 @@ export function DashboardPage() {
         {recentTxs.length === 0 ? (
           <p className="text-slate-500 text-sm p-5">Sin transacciones recientes</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-slate-400 text-left border-b border-slate-800">
-                  <th className="px-5 py-2 font-medium">Fecha</th>
-                  <th className="px-5 py-2 font-medium">Cuenta</th>
-                  <th className="px-5 py-2 font-medium">Detalle</th>
-                  <th className="px-5 py-2 font-medium">Categoría</th>
-                  <th className="px-5 py-2 font-medium text-right">Importe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTxs.map((t) => {
-                  const isTransfer = t.type === 'transferencia';
-                  if (isTransfer) {
-                    const isOutgoing = t.amount < 0;
-                    const fromId = isOutgoing ? t.account_id : (t.to_account_id || t.account_id);
-                    const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
-                    const fromName = accName(fromId);
-                    const toName = accName(toId);
-                    const displayAmount = isOutgoing
-                      ? `-${formatEUR(Math.abs(t.amount))}`
-                      : formatEUR(Math.abs(t.amount), { sign: true });
-                    const color = isOutgoing ? 'text-red-400' : 'text-emerald-400';
+          <>
+            {/* Table View (Desktop) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-slate-400 text-left border-b border-slate-800">
+                    <th className="px-5 py-2 font-medium">Fecha</th>
+                    <th className="px-5 py-2 font-medium">Cuenta</th>
+                    <th className="px-5 py-2 font-medium">Detalle</th>
+                    <th className="px-5 py-2 font-medium">Categoría</th>
+                    <th className="px-5 py-2 font-medium text-right">Importe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTxs.map((t) => {
+                    const isTransfer = t.type === 'transferencia';
+                    if (isTransfer) {
+                      const isOutgoing = t.amount < 0;
+                      const fromId = isOutgoing ? t.account_id : (t.to_account_id || t.account_id);
+                      const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
+                      const fromName = accName(fromId);
+                      const toName = accName(toId);
+                      const displayAmount = isOutgoing
+                        ? `-${formatEUR(Math.abs(t.amount))}`
+                        : formatEUR(Math.abs(t.amount), { sign: true });
+                      const color = isOutgoing ? 'text-red-400' : 'text-emerald-400';
 
+                      return (
+                        <tr key={t.id} className="border-b border-slate-800/50">
+                          <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
+                          <td colSpan={2} className="px-5 py-2.5">
+                            <div className="flex items-center gap-1.5 font-medium text-slate-200 text-sm">
+                              <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span>{fromName}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0 mx-0.5" />
+                              <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                              <span>{toName}</span>
+                              {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
+                          <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
+                        </tr>
+                      );
+                    }
+
+                    const isExpense = t.type === 'gasto';
+                    const color = isExpense ? 'text-red-400' : 'text-emerald-400';
+                    const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
                     return (
                       <tr key={t.id} className="border-b border-slate-800/50">
                         <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
-                        <td colSpan={2} className="px-5 py-2.5">
-                          <div className="flex items-center gap-1.5 font-medium text-slate-200 text-sm">
-                            <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                            <span>{fromName}</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0 mx-0.5" />
-                            <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                            <span>{toName}</span>
-                            {t.note && <span className="text-xs text-slate-500 font-normal">({t.note})</span>}
-                          </div>
-                        </td>
+                        <td className="px-5 py-2.5 text-slate-400">{accName(t.account_id)}</td>
+                        <td className="px-5 py-2.5 text-slate-400">{t.note || '—'}</td>
                         <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
                         <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
                       </tr>
                     );
-                  }
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                  const isExpense = t.type === 'gasto';
-                  const color = isExpense ? 'text-red-400' : 'text-emerald-400';
-                  const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
+            {/* Compact Card List View (Mobile) */}
+            <div className="md:hidden divide-y divide-slate-800/60">
+              {recentTxs.map((t) => {
+                const isTransfer = t.type === 'transferencia';
+                if (isTransfer) {
+                  const isOutgoing = t.amount < 0;
+                  const fromId = isOutgoing ? t.account_id : (t.to_account_id || t.account_id);
+                  const toId = isOutgoing ? (t.to_account_id || t.account_id) : t.account_id;
+                  const fromName = accName(fromId);
+                  const toName = accName(toId);
+                  const displayAmount = isOutgoing
+                    ? `-${formatEUR(Math.abs(t.amount))}`
+                    : formatEUR(Math.abs(t.amount), { sign: true });
+                  const color = isOutgoing ? 'text-red-400' : 'text-emerald-400';
+
                   return (
-                    <tr key={t.id} className="border-b border-slate-800/50">
-                      <td className="px-5 py-2.5 text-slate-300">{formatDate(t.date)}</td>
-                      <td className="px-5 py-2.5 text-slate-400">{accName(t.account_id)}</td>
-                      <td className="px-5 py-2.5 text-slate-400">{t.note || '—'}</td>
-                      <td className="px-5 py-2.5"><CategoryBadge category={catById(t.category_id)} size="xs" /></td>
-                      <td className={`px-5 py-2.5 text-right font-medium ${color}`}>{displayAmount}</td>
-                    </tr>
+                    <div key={t.id} className="p-3.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-400">{formatDate(t.date)}</span>
+                        <span className={`text-sm font-semibold ${color}`}>{displayAmount}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-200">
+                          <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span>{fromName}</span>
+                          <ArrowRight className="w-3 h-3 text-slate-500 shrink-0" />
+                          <Landmark className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span>{toName}</span>
+                          {t.note && <span className="text-slate-400">({t.note})</span>}
+                        </div>
+                        {t.category_id && <CategoryBadge category={catById(t.category_id)} size="xs" />}
+                      </div>
+                    </div>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                }
+
+                const isExpense = t.type === 'gasto';
+                const color = isExpense ? 'text-red-400' : 'text-emerald-400';
+                const displayAmount = isExpense ? `-${formatEUR(Math.abs(t.amount))}` : formatEUR(Math.abs(t.amount), { sign: true });
+                return (
+                  <div key={t.id} className="p-3.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CategoryBadge category={catById(t.category_id)} size="xs" />
+                        <span className="text-xs text-slate-400 truncate">{accName(t.account_id)}</span>
+                      </div>
+                      <span className={`text-sm font-semibold shrink-0 ${color}`}>{displayAmount}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
+                      <span className="truncate">{t.note || '—'}</span>
+                      <span className="shrink-0">{formatDate(t.date)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </Card>
 
@@ -215,7 +316,7 @@ export function DashboardPage() {
       {/* Gasto por categorías unificado */}
       <CategoryExpensesChart
         title="Gastos por categoría"
-        transactions={transactions}
+        transactions={filteredTransactions}
         categories={categories}
         accounts={accounts}
         showAccountSelector

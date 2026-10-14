@@ -1,0 +1,23 @@
+
+> mi-patrimonio@1.0.0 dev
+> concurrently "npm run dev:client" "npm run dev:server"
+
+[0]
+[0] > mi-patrimonio@1.0.0 dev:client
+[0] > vite
+[0]
+[1]
+[1] > mi-patrimonio@1.0.0 dev:server
+[1] > cross-env DB_PATH=./data/app.db tsx --env-file=.env --watch server/index.ts
+[1]
+[0]
+[0]   VITE v5.4.8  ready in 266 ms
+[0]
+[0]   ➜  Local:   http://localhost:5173/
+[0]   ➜  Network: use --host to expose
+[1] Mi Patrimonio escuchando en el puerto 3000
+[0] Browserslist: caniuse-lite is outdated. Please run:
+[0]   npx update-browserslist-db@latest
+[0]   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[1] Failed running 'server/index.ts'. Waiting for file changes before restarting...
+[0] npm run dev:client exited with code 0

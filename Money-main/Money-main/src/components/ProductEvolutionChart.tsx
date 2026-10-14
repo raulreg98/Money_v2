@@ -31,7 +31,7 @@ function periodToRange(period: Period): { desde: string; hasta: string } | null 
     case '1A': d.setFullYear(d.getFullYear() - 1); break;
     case '3A': d.setFullYear(d.getFullYear() - 3); break;
     case '5A': d.setFullYear(d.getFullYear() - 5); break;
-    case 'TODO': return { desde: '', hasta };
+    case 'TODO': return { desde: '2015-01-01', hasta };
   }
   return { desde: d.toISOString().slice(0, 10), hasta };
 }
@@ -233,11 +233,11 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-white font-semibold">Evolución de productos</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap max-w-full">
             <select
               value={metric}
               onChange={(e) => setMetric(e.target.value as Metric)}
-              className="bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 border border-slate-700 focus:border-blue-500 outline-none"
+              className="bg-slate-800 text-slate-200 text-xs sm:text-sm rounded-lg px-2.5 py-1.5 border border-slate-700 focus:border-blue-500 outline-none max-w-full truncate"
             >
               <option value="valor">Valor Total Patrimonio (€)</option>
               <option value="area_stacked_eur">Área Apilada - Dinero Total (€)</option>
@@ -248,7 +248,7 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
             </select>
             <button
               onClick={() => setShowSelector(s => !s)}
-              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm px-3 py-1.5 rounded-lg transition-colors shrink-0"
             >
               {selected.length} productos
             </button>
@@ -256,12 +256,12 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
         </div>
 
         {/* Period selector */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 max-w-full overflow-x-auto pb-1">
           {PERIODS.map(p => (
             <button
               key={p.id}
               onClick={() => setPeriod(p.id)}
-              className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm rounded-lg transition-colors shrink-0 ${
                 period === p.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
@@ -269,10 +269,10 @@ export function ProductEvolutionChart({ products }: ProductEvolutionChartProps) 
             </button>
           ))}
           {showCustom && (
-            <div className="flex items-center gap-2 ml-2">
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-800 text-slate-200 text-sm rounded-lg px-2 py-1.5 border border-slate-700 focus:border-blue-500 outline-none" />
-              <span className="text-slate-500 text-sm">→</span>
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-800 text-slate-200 text-sm rounded-lg px-2 py-1.5 border border-slate-700 focus:border-blue-500 outline-none" />
+            <div className="flex items-center gap-1.5 ml-1 flex-wrap">
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:border-blue-500 outline-none max-w-[130px]" />
+              <span className="text-slate-500 text-xs">→</span>
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="bg-slate-800 text-slate-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:border-blue-500 outline-none max-w-[130px]" />
             </div>
           )}
         </div>
