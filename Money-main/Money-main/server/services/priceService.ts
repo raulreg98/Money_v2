@@ -135,6 +135,12 @@ export async function updateAllPrices(): Promise<{ results: PriceResult[]; error
       errors.push(`${product.name}: ${result.error}`);
     }
 
+    try {
+      await downloadProductHistory(product.id);
+    } catch (e: any) {
+      console.error(`[PRECIO] Error al sincronizar histórico para ${product.name}:`, e.message);
+    }
+
     await sequentialDelay();
   }
 

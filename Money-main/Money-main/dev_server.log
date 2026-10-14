@@ -21,3 +21,57 @@
 [0]   Why you should do it regularly: https://github.com/browserslist/update-db#readme
 [1] Failed running 'server/index.ts'. Waiting for file changes before restarting...
 [0] npm run dev:client exited with code 0
+[1] Restarting 'server/index.ts'
+[1] node:events:497
+[1]       throw er; // Unhandled 'error' event
+[1]       ^
+[1]
+[1] Error: listen EADDRINUSE: address already in use :::3000
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+[1]     at listenInCluster (node:net:1997:12)
+[1]     at Server.listen (node:net:2102:7)
+[1]     at main (/app/Money-main/Money-main/server/index.ts:1654:10)
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+[1] Emitted 'error' event on Server instance at:
+[1]     at emitErrorNT (node:net:1976:8)
+[1]     at process.processTicksAndRejections [1] node:events:497
+[1]       throw er; // Unhandled 'error' event
+[1]       ^
+[1]
+[1] Error: listen EADDRINUSE: address already in use :::3000
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+[1]     at listenInCluster (node:net:1997:12)
+[1]    [1] Restarting 'server/index.ts'
+[1] node:events:497
+[1]       throw er; // Unhandled 'error' event
+[1]       ^
+[1]
+[1] Error: listen EADDRINUSE: address already in use :::3000
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+[1]     at listenInCluster (node:net:1997:12)
+[1]     at Server.listen (node:net:2102:7)
+[1]     at main (/app/Money-main/Money-main/server/index.ts:1654:10)
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+[1] Emitted 'error' event on Server instance at:
+[1]     at emitErrorNT (node:net:1976:8)
+[1]     at process.processTicksAndRejections [1] node:events:497
+[1]       throw er; // Unhandled 'error' event
+[1]       ^
+[1]
+[1] Error: listen EADDRINUSE: address already in use :::3000
+[1]     at Server.setupListenHandle [a[1] Failed running 'server/index.ts'. Waiting for file changes before restarting...
+ at Server.listen (node:net:2102:7)
+[1]     at main (/app/Money-main/Money-main/server/index.ts:1654:10)
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+[1] Emitted 'error' event on Server instance at:
+[1]     at emitErrorNT (node:net:1976:8)
+[1]     at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3000
+[1] }
+[1]
+[1] Node.js v22.22.1
+[1] Failed running 'server/index.ts'. Waiting for file changes before restarting...

@@ -493,7 +493,7 @@ async function main() {
       allTransactions: filtered,
       totalCount: filtered.length,
       accounts: allAccounts.map(a => ({ id: a.id, name: a.name, color: a.color, type: a.type })),
-      categories: categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id })),
+      categories: categories.map(c => ({ id: c.id, name: c.name, color: c.color, icon: c.icon, parent_id: c.parent_id })),
       tags: tags.map(t => ({ id: t.id, name: t.name, color: t.color })),
       balanceSeries,
       monthlyBars,
@@ -1659,9 +1659,10 @@ async function main() {
     }, 5000);
   });
 
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
   setInterval(() => {
     updateAllPrices().catch(err => console.error('Error en actualización programada de precios:', err.message));
-  }, 4 * 60 * 60 * 1000);
+  }, SIX_HOURS);
 }
 
 main().catch(err => {
