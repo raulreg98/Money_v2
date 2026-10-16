@@ -1,4 +1,4 @@
-import { MONTH_NAMES_FULL } from './format';
+import { monthNameFull } from './format';
 
 export type PeriodState =
   | { kind: 'month'; year: number; month: number /* 0-11 */ }
@@ -33,7 +33,7 @@ export function shiftMonth(p: PeriodState, delta: number): PeriodState {
 
 export function periodLabel(p: PeriodState): string {
   if (p.kind === 'month') {
-    const name = MONTH_NAMES_FULL[p.month] || '';
+    const name = monthNameFull(p.month);
     const capitalized = name ? name.charAt(0).toUpperCase() + name.slice(1) : '';
     return `${capitalized} ${p.year}`;
   }
