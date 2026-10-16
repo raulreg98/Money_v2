@@ -413,7 +413,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
             <Archive className="w-3.5 h-3.5" /> Archivar
           </button>
           <button onClick={() => setShowAddTx(true)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium px-3 py-2 rounded-lg transition-colors flex-1 sm:flex-initial">
-            <Plus className="w-4 h-4 shrink-0" /> <span className="truncate">+ Transacción</span>
+            <Plus className="w-4 h-4 shrink-0" /> <span className="truncate">Transacción</span>
           </button>
         </div>
       </div>
