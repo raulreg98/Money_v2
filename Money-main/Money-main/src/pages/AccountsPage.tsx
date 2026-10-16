@@ -10,7 +10,7 @@ import { PeriodState, currentMonthPeriod, periodToRange } from '@/lib/period';
 import { resolveCategory } from '@/lib/categories';
 import { useCategoryContext } from '@/context/CategoryContext';
 import { formatEUR, formatDate, formatAxisEUR, formatAxisEURPrecise, formatAxisDateWithYear, formatUnits, ACCOUNT_TYPES } from '@/lib/format';
-import { Plus, Trash2, ArrowRight, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, Landmark } from 'lucide-react';
+import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, Landmark } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar,
   ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid,
