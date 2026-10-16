@@ -157,7 +157,7 @@ export function PeriodSelector({ value, onChange, firstTxDate }: Props) {
             <div
               role="dialog"
               aria-label="Elegir mes"
-              className="absolute top-full left-0 mt-2 z-50 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 space-y-3"
+              className="absolute top-full left-0 right-0 sm:right-auto sm:left-0 mt-2 z-[100] w-full sm:w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 space-y-3"
             >
               {/* Dropdown Year Header */}
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
