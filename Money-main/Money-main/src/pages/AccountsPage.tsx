@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
 import type { Account, Transaction, Category } from '@/types';
 import { Card } from '@/components/Card';
 import { CategorySelector, CategoryBadge } from '@/components/CategorySelector';
 import { AccountSelector } from '@/components/AccountSelector';
 import { CategoryExpensesChart } from '@/components/CategoryExpensesChart';
+import { PeriodSelector } from '@/components/PeriodSelector';
+import { PeriodState, currentMonthPeriod, periodToRange } from '@/lib/period';
 import { resolveCategory } from '@/lib/categories';
 import { useCategoryContext } from '@/context/CategoryContext';
-import { formatEUR, formatDate, formatAxisEUR, formatAxisDate, formatUnits, ACCOUNT_TYPES } from '@/lib/format';
-import { Plus, Trash2, ArrowRight, ArrowLeft, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, X, Landmark } from 'lucide-react';
+import { formatEUR, formatDate, formatAxisEUR, formatAxisEURPrecise, formatAxisDateWithYear, formatUnits, ACCOUNT_TYPES } from '@/lib/format';
+import { Plus, Trash2, ArrowRight, EyeOff, Archive, Edit3, ChevronDown, ChevronRight, Search, CheckSquare, Square, FolderInput, Landmark } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar,
   ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, CartesianGrid,
@@ -213,29 +215,15 @@ function AccountSection({ title, subtotal, accounts, accountBalance, onSelect, o
 
 // ===================== DETAIL VIEW =====================
 
-type Period = '1M' | '3M' | '6M' | '1A' | 'TODO';
-
-const PERIODS: { id: Period; label: string }[] = [
-  { id: '1M', label: '1M' }, { id: '3M', label: '3M' }, { id: '6M', label: '6M' }, { id: '1A', label: '1A' }, { id: 'TODO', label: 'Todo' },
-];
-
-function periodToRange(period: Period): { desde: string; hasta: string } {
-  const hasta = new Date().toISOString().slice(0, 10);
-  const d = new Date();
-  if (period === 'TODO') return { desde: '2000-01-01', hasta };
-  if (period === '1M') d.setMonth(d.getMonth() - 1);
-  if (period === '3M') d.setMonth(d.getMonth() - 3);
-  if (period === '6M') d.setMonth(d.getMonth() - 6);
-  if (period === '1A') d.setFullYear(d.getFullYear() - 1);
-  return { desde: d.toISOString().slice(0, 10), hasta };
-}
-
 function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () => void }) {
-  const { categories: contextCategories, loading: categoriesLoading, resolveCategory: resolveCategoryFromContext } = useCategoryContext();
+  const { categories: contextCategories } = useCategoryContext();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState<Period>('1M');
+  const [period, setPeriod] = useState<PeriodState>(() => currentMonthPeriod());
+  const range = useMemo(() => periodToRange(period), [period]);
+  const reqCounterRef = useRef(0);
+
   const [txType, setTxType] = useState('');
   const [txCat, setTxCat] = useState('');
   const [search, setSearch] = useState('');
@@ -249,22 +237,38 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   const [showAdjustBalance, setShowAdjustBalance] = useState(false);
   const [targetBalance, setTargetBalance] = useState('');
   const [adjusting, setAdjusting] = useState(false);
-  const [selectedCatName, setSelectedCatName] = useState<string | null>(null);
 
-  const loadSummary = () => {
-    const { desde, hasta } = periodToRange(period);
+  const loadSummary = useCallback(() => {
+    const currentReq = ++reqCounterRef.current;
     setLoading(true);
     api.getAccountSummary(accountId, {
-      desde, hasta,
-      tipo: txType, categoria: txCat, q: search,
+      desde: range.desde,
+      hasta: range.hasta,
+      tipo: txType,
+      categoria: txCat,
+      q: search,
       limit: showAllTx ? 1000 : 20,
     })
-      .then(setData)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+      .then((res) => {
+        if (currentReq === reqCounterRef.current) {
+          setData(res);
+        }
+      })
+      .catch((err) => {
+        if (currentReq === reqCounterRef.current) {
+          setError(err.message);
+        }
+      })
+      .finally(() => {
+        if (currentReq === reqCounterRef.current) {
+          setLoading(false);
+        }
+      });
+  }, [accountId, range.desde, range.hasta, txType, txCat, search, showAllTx]);
 
-  useEffect(() => { loadSummary(); }, [accountId, period, txType, txCat, search, showAllTx]);
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
 
   if (loading && !data) {
     return (
@@ -283,7 +287,22 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
     );
   }
 
-  const { account, balance, investedValue, totalBalance, transactions, totalCount, accounts: accList, categories: apiCategories, balanceSeries, monthlyBars, gastosPorCategoria, investmentProducts } = data;
+  const {
+    account,
+    balance,
+    investedValue,
+    totalBalance,
+    transactions,
+    totalCount,
+    periodCount,
+    lastTransaction,
+    accounts: accList,
+    categories: apiCategories,
+    balanceSeries = [],
+    monthlyBars = [],
+    periodBars = [],
+    investmentProducts = []
+  } = data;
 
   const activeCategories = (contextCategories && contextCategories.length > 0)
     ? contextCategories
@@ -314,10 +333,10 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
   };
 
   const handleUndo = async () => {
-    if (transactions.length === 0) return;
-    const lastTx = transactions[0];
+    const targetTx = lastTransaction || (transactions.length > 0 ? transactions[0] : null);
+    if (!targetTx) return;
     try {
-      await api.deleteTransaction(lastTx.id);
+      await api.deleteTransaction(targetTx.id);
       loadSummary();
     } catch (err: any) {
       setError(err.message);
@@ -356,8 +375,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
     return resolveCategory(id, activeCategories);
   };
 
-  const donutData = gastosPorCategoria;
-  const donutTotal = donutData.reduce((s: number, d: any) => s + d.value, 0);
+  const barsData = periodBars.length > 0 ? periodBars : monthlyBars;
 
   return (
     <div className="space-y-6 p-4 sm:p-6 rounded-2xl border transition-colors" style={{ backgroundColor: `${account.color}15`, borderColor: `${account.color}35` }}>
@@ -377,7 +395,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-          {transactions.length > 0 && (
+          {(lastTransaction || transactions.length > 0) && (
             <button onClick={handleUndo} className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm px-2.5 py-2 rounded-lg transition-colors flex-1 sm:flex-initial" title="Deshacer último movimiento">
               Deshacer
             </button>
@@ -400,20 +418,14 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         </div>
       </div>
 
-      {/* Unified Global Time Range Bar */}
-      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl p-3 flex-wrap gap-2">
-        <span className="text-slate-300 text-sm font-medium">Periodo de análisis</span>
-        <div className="flex gap-1.5">
-          {PERIODS.map(p => (
-            <button key={p.id} onClick={() => setPeriod(p.id)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${period === p.id ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Global Period Selector */}
+      <PeriodSelector
+        value={period}
+        onChange={(newPeriod) => setPeriod(newPeriod)}
+        firstTxDate={data.firstTxDate}
+      />
 
-      {/* Balance */}
+      {/* Balance Summary */}
       {account.type === 'inversion' ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <MiniStat label="Total de la cuenta" value={formatEUR(totalBalance ?? (balance + (investedValue || 0)))} valueClass="text-blue-400" />
@@ -424,12 +436,12 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MiniStat label="Saldo actual" value={formatEUR(balance)} />
           <MiniStat label="Inicial" value={formatEUR(account.initial_balance)} />
-          <MiniStat label="Transacciones" value={String(totalCount)} />
+          <MiniStat label="Movimientos del periodo" value={String(periodCount ?? totalCount)} />
           <MiniStat label="Moneda" value={account.currency} />
         </div>
       )}
 
-      {/* Charts */}
+      {/* Balance Evolution Line Chart */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h2 className="text-white font-semibold">Evolución del saldo</h2>
@@ -438,8 +450,8 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={balanceSeries} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisDate} minTickGap={40} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} domain={['auto', 'auto']} />
+              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisDateWithYear} minTickGap={40} />
+              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEURPrecise} domain={['auto', 'auto']} />
               <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#94a3b8' }} formatter={(v: any) => [formatEUR(Number(v)), 'Saldo']} />
               <Line type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={2} dot={false} />
             </LineChart>
@@ -450,14 +462,14 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ingresos vs gastos */}
+        {/* Income vs Expenses Bar Chart */}
         <Card className="p-5">
-          <h2 className="text-white font-semibold mb-4">Ingresos vs gastos por mes</h2>
-          {monthlyBars.length > 0 ? (
+          <h2 className="text-white font-semibold mb-4">Ingresos vs gastos por periodo</h2>
+          {barsData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={monthlyBars} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+              <BarChart data={barsData} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+                <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickFormatter={formatAxisEUR} />
                 <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#94a3b8' }} formatter={(v: any) => formatEUR(Number(v))} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -470,19 +482,19 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
           )}
         </Card>
 
-        {/* Gastos por categoría unificado */}
+        {/* Category Expenses Donut Chart */}
         <CategoryExpensesChart
           title="Gastos por categoría"
           transactions={data.allTransactions || transactions}
           categories={activeCategories}
           accounts={accList}
           accountId={accountId}
-          dateRange={periodToRange(period)}
+          dateRange={range}
           onRefresh={loadSummary}
         />
       </div>
 
-      {/* Investment products */}
+      {/* Investment Products Table */}
       {investmentProducts.length > 0 && (
         <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-800">
@@ -511,7 +523,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
         </Card>
       )}
 
-      {/* Transactions */}
+      {/* Transactions List */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
@@ -545,7 +557,7 @@ function AccountDetail({ accountId, onBack }: { accountId: number; onBack: () =>
               </div>
             )}
           </div>
-          {/* Bulk category change */}
+          {/* Bulk Category Action */}
           {selectedTxIds.size > 0 && (
             <div className="flex flex-wrap items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2">
               <span className="text-sm text-slate-300">{selectedTxIds.size} seleccionadas</span>

@@ -61,6 +61,18 @@ export function formatAxisEUR(value: number): string {
   return v.toFixed(0);
 }
 
+export function formatAxisEURPrecise(value: number): string {
+  const v = safeNum(value);
+  const absValue = Math.abs(v);
+  if (absValue >= 1_000_000) {
+    return `${(v / 1_000_000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} M€`;
+  }
+  if (absValue >= 1_000) {
+    return `${(v / 1_000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} k€`;
+  }
+  return `${v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+}
+
 export function formatAxisPercent(value: number): string {
   const v = safeNum(value);
   return `${v.toFixed(0)}%`;
@@ -103,6 +115,17 @@ export function formatAxisDate(dateStr: string): string {
   const monthIdx = parseInt(parts[1], 10) - 1;
   const monthAbbr = monthName(monthIdx).toUpperCase();
   return `${day} ${monthAbbr}`;
+}
+
+export function formatAxisDateWithYear(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const day = parts[2].slice(0, 2);
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  const monthAbbr = monthName(monthIdx).toUpperCase();
+  const yearShort = parts[0].slice(2, 4);
+  return `${day} ${monthAbbr} '${yearShort}`;
 }
 
 export function monthNameFull(month: number): string {

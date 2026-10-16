@@ -25,6 +25,7 @@ import { xirrPercent } from './calculations/xirr';
 import { computeDailySeries, computeMaxDrawdown, computeVolatility, computeSharpe } from './calculations/series';
 import { simulateInvestment } from './calculations/comparator';
 import { computeProductSeries } from './calculations/productValue';
+import { openingBalance, buildBalanceSeries, buildPeriodBars } from './calculations/accountPeriod';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
@@ -346,33 +347,43 @@ async function main() {
     const categories = await categoryRepo.getAllCategories();
     const tags = await tagRepo.getAllTags();
 
-    // Aplicar filtros
-    let filtered = allTx;
-    if (desde) filtered = filtered.filter(t => t.date >= desde);
-    if (hasta) filtered = filtered.filter(t => t.date <= hasta);
-    if (tipoFiltro) filtered = filtered.filter(t => t.type === tipoFiltro);
+    // Determine firstTxDate and lastTransaction across allTx for this account
+    const sortedAllTxDesc = [...allTx].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    const lastTransaction = sortedAllTxDesc[0] || null;
+    const firstTxDate = allTx.length > 0
+      ? allTx.reduce((min, t) => (t.date < min ? t.date : min), allTx[0].date)
+      : '2000-01-01';
+
+    // Filter periodTx (date range only)
+    let periodTx = allTx;
+    if (desde) periodTx = periodTx.filter(t => t.date >= desde);
+    if (hasta) periodTx = periodTx.filter(t => t.date <= hasta);
+
+    // Apply table-specific filters on top of periodTx for the transaction list
+    let tableTx = periodTx;
+    if (tipoFiltro) tableTx = tableTx.filter(t => t.type === tipoFiltro);
     if (catFiltro) {
       const catId = parseInt(catFiltro);
       const childIds = await categoryRepo.getChildCategoryIds(catId);
       const allCatIds = new Set([catId, ...childIds]);
-      filtered = filtered.filter(t => t.category_id && allCatIds.has(t.category_id));
+      tableTx = tableTx.filter(t => t.category_id && allCatIds.has(t.category_id));
     }
     if (tagFiltro) {
-      filtered = filtered.filter(t => {
+      tableTx = tableTx.filter(t => {
         if (!t.tags) return false;
         return t.tags.split(',').map(s => s.trim()).includes(tagFiltro);
       });
     }
     if (q) {
       const lower = q.toLowerCase();
-      filtered = filtered.filter(t =>
+      tableTx = tableTx.filter(t =>
         (t.note || '').toLowerCase().includes(lower) ||
         t.type.toLowerCase().includes(lower)
       );
     }
 
-    // Calcular saldo acumulado para todas las transacciones de la cuenta
-    const sortedByDateAsc = [...allTx].filter(t => t.account_id === accountId).sort((a, b) => {
+    // Running balance map for table rows
+    const sortedByDateAsc = [...allTx].sort((a, b) => {
       if (a.date !== b.date) return a.date.localeCompare(b.date);
       return a.id - b.id;
     });
@@ -383,34 +394,26 @@ async function main() {
       runningMap.set(t.id, runningAccBalance);
     }
 
-    const pagedTx = filtered.slice(offset, offset + limit).map(t => ({
+    const pagedTx = tableTx.slice(offset, offset + limit).map(t => ({
       ...t,
       running_balance: runningMap.get(t.id) ?? account.initial_balance,
     }));
 
-    // Balance actual
-    const balance = account.initial_balance + allTx
-      .filter(t => t.account_id === accountId)
-      .reduce((s, t) => s + t.amount, 0);
+    // Current total cash balance
+    const balance = account.initial_balance + allTx.reduce((s, t) => s + t.amount, 0);
 
-    // Serie de evolución del saldo (acumulativa)
-    const sortedByDate = [...allTx].filter(t => t.account_id === accountId).sort((a, b) => a.date.localeCompare(b.date));
-    const balanceSeries: { date: string; balance: number }[] = [];
-    let runningBalance = account.initial_balance;
-    const dateGroups = new Map<string, number>();
-    for (const t of sortedByDate) {
-      const day = t.date;
-      dateGroups.set(day, (dateGroups.get(day) || 0) + t.amount);
-    }
-    for (const [date, dayChange] of dateGroups) {
-      runningBalance += dayChange;
-      balanceSeries.push({ date, balance: runningBalance });
-    }
+    // Opening balance at `desde` & balance series over period
+    const startBal = openingBalance(account.initial_balance, allTx, desde);
+    const balanceSeries = buildBalanceSeries(allTx, startBal, desde, hasta);
 
-    // Ingresos vs gastos por mes (filtrados por fecha)
+    // Period bars (income vs expense)
+    const periodBarsRes = buildPeriodBars(periodTx, desde, hasta);
+    const periodBars = periodBarsRes.bars;
+    const barsGranularity = periodBarsRes.granularity;
+
+    // Monthly bars fallback / overview
     const monthMap = new Map<string, { ingresos: number; gastos: number }>();
-    for (const t of filtered) {
-      if (t.account_id !== accountId) continue;
+    for (const t of periodTx) {
       const month = t.date.slice(0, 7);
       if (!monthMap.has(month)) monthMap.set(month, { ingresos: 0, gastos: 0 });
       const entry = monthMap.get(month)!;
@@ -421,11 +424,11 @@ async function main() {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([month, v]) => ({ month, ...v }));
 
-    // Gastos por categoría y por tag (filtrados por fecha)
+    // Expenses by category based on periodTx (so search filter in table doesn't affect charts)
     const catMap = new Map<string, number>();
     const tagMap = new Map<string, number>();
-    for (const t of filtered) {
-      if (t.account_id !== accountId || t.type !== 'gasto') continue;
+    for (const t of periodTx) {
+      if (t.type !== 'gasto') continue;
       if (t.category_id) {
         const cat = categories.find(c => c.id === t.category_id);
         let parentCat = cat;
@@ -447,7 +450,7 @@ async function main() {
     }).sort((a, b) => b.value - a.value);
     const gastosPorTag = Array.from(tagMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
-    // Productos de inversión (vinculados por account_id o nombre de cartera)
+    // Investment products
     let investmentProducts: any[] = [];
     let investedValue = 0;
     if (account.type === 'inversion') {
@@ -490,13 +493,18 @@ async function main() {
       investedValue,
       totalBalance: balance + investedValue,
       transactions: pagedTx,
-      allTransactions: filtered,
-      totalCount: filtered.length,
+      allTransactions: periodTx,
+      totalCount: tableTx.length,
+      periodCount: periodTx.length,
+      firstTxDate,
+      lastTransaction,
       accounts: allAccounts.map(a => ({ id: a.id, name: a.name, color: a.color, type: a.type })),
       categories: categories.map(c => ({ id: c.id, name: c.name, color: c.color, icon: c.icon, parent_id: c.parent_id })),
       tags: tags.map(t => ({ id: t.id, name: t.name, color: t.color })),
       balanceSeries,
       monthlyBars,
+      periodBars,
+      barsGranularity,
       gastosPorCategoria,
       gastosPorTag,
       investmentProducts,
