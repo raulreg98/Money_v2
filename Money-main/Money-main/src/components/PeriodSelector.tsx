@@ -6,7 +6,7 @@ import {
   shiftMonth,
   periodLabel,
 } from '../lib/period';
-import { MONTH_NAMES_FULL, monthName } from '../lib/format';
+import { monthNameFull, monthName } from '../lib/format';
 
 interface Props {
   value: PeriodState;
@@ -253,7 +253,7 @@ export function PeriodSelector({ value, onChange, firstTxDate }: Props) {
 
               {isCurrentMonthSelected && (
                 <div className="border-t border-slate-800/80 pt-1.5 text-[11px] text-amber-400/90 text-center">
-                  Mes en curso · datos hasta el {now.getDate()} de {MONTH_NAMES_FULL[currentMonth]}
+                  Mes en curso · datos hasta el {now.getDate()} de {monthNameFull(currentMonth)}
                 </div>
               )}
             </div>
